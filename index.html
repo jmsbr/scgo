@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Controle de Lotes (Online)</title>
+    <title>Sistema de Controle de Lotes (Modo Turbo)</title>
     
     <!-- Bibliotecas de Estilo e React -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -261,45 +261,73 @@
             }, []);
 
             // --- AÇÕES DO USUÁRIO ---
-            const adicionarLote = async (e) => {
+            
+            // =========================================================
+            //  FUNÇÃO OTIMIZADA PARA VELOCIDADE (BIPAGEM RÁPIDA)
+            // =========================================================
+            const adicionarLote = (e) => {
                 e.preventDefault();
-                const codigoFormatado = novoLote.trim().toUpperCase();
-
-                if (!codigoFormatado) return alert("Digite o lote.");
                 
-                // NOVA VALIDAÇÃO: Impede códigos com mais de um 'BR' (ex: BR...BR...)
-                if ((codigoFormatado.match(/BR/g) || []).length > 1) {
-                    alert("⚠️ ERRO DE LEITURA:\nForam detectados dois códigos 'BR' juntos.\nVerifique se o scanner leu dois pacotes simultaneamente.");
-                    setNovoLote(''); // Limpa para tentar de novo
-                    if (loteInputRef.current) loteInputRef.current.focus();
+                // 1. CAPTURA VALORES
+                const codigoCapturado = novoLote;
+                const baseSelecionada = novaBase;
+                const periodoSelecionado = novoPeriodo;
+
+                // 2. LIMPEZA IMEDIATA (Optimistic UI) - O mais importante para velocidade
+                // Limpa o campo e devolve o foco sem esperar o Firebase
+                setNovoLote('');
+                if (loteInputRef.current) loteInputRef.current.focus();
+
+                // 3. VALIDAÇÕES LÓGICAS (Rodam rápido localmente)
+                const codigoFormatado = codigoCapturado.trim().toUpperCase();
+
+                if (!codigoFormatado) return; // Se vazio, só ignora
+
+                // Validação de Base
+                if (!baseSelecionada.trim()) {
+                    alert("⚠️ ALERTA: Selecione uma BASE antes de bipar!");
                     return;
                 }
 
-                if (!novaBase.trim()) return alert("Selecione a base.");
-                if (!dbConnected) return alert("Banco de dados não conectado!");
+                // NOVA VALIDAÇÃO: Impede códigos com mais de um 'BR' (ex: BR...BR...)
+                if ((codigoFormatado.match(/BR/g) || []).length > 1) {
+                    // Usa alert aqui, mas idealmente seria um som de erro para não travar
+                    alert(`⚠️ ERRO DE LEITURA: ${codigoFormatado}\nForam detectados dois códigos 'BR' juntos.`);
+                    return;
+                }
 
+                if (!dbConnected) {
+                     alert("Banco de dados desconectado! Verifique internet.");
+                     return;
+                }
+
+                // 4. PREPARA OBJETO
                 const dataAtual = new Date();
                 const novoItem = {
                     codigo: codigoFormatado,
                     status: 'pendente', 
-                    baseSegmento: novaBase,
-                    // REMOVIDO USUÁRIO
-                    periodo: novoPeriodo,
+                    baseSegmento: baseSelecionada,
+                    periodo: periodoSelecionado,
                     timestampCriacao: dataAtual.getTime(),
                     dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
                     horaCriacao: dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada manual' }]
+                    historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida (Scanner)' }]
                 };
 
-                try {
-                    await window.fb.addDoc(window.fb.collection(window.db, "lotes"), novoItem);
-                    setNovoLote('');
-                    if (loteInputRef.current) loteInputRef.current.focus();
-                    if (!listaBases.includes(novaBase)) setListaBases(prev => [...prev, novaBase]);
-                } catch (error) {
-                    console.error("Erro ao salvar:", error);
-                    alert("Erro ao salvar. Verifique permissões.");
-                }
+                // 5. ENVIA EM SEGUNDO PLANO (Sem 'await' bloqueante)
+                // O código continua rodando e o usuário já pode bipar o próximo
+                window.fb.addDoc(window.fb.collection(window.db, "lotes"), novoItem)
+                    .then(() => {
+                        console.log(`Lote ${codigoFormatado} salvo em background.`);
+                        // Se quiser atualizar a lista de bases se for nova (raro)
+                        if (!listaBases.includes(baseSelecionada)) {
+                            setListaBases(prev => [...prev, baseSelecionada]);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Erro ao salvar:", error);
+                        alert(`❌ ERRO AO SALVAR O LOTE: ${codigoFormatado}.\nVerifique sua conexão!`);
+                    });
             };
 
             const adicionarLotesMassa = async () => {
@@ -671,7 +699,7 @@
                                                 <Icons.Plus className="w-5 h-5 text-green-600"/> Nova Entrada
                                             </h2>
                                             <div className="flex bg-gray-100 rounded-lg p-1 text-xs font-bold">
-                                                <button onClick={()=>setModoEntrada('scanner')} className={`px-3 py-1 rounded transition ${modoEntrada==='scanner'?'bg-white shadow text-indigo-600':'text-gray-500'}`}>Scanner</button>
+                                                <button onClick={()=>setModoEntrada('scanner')} className={`px-3 py-1 rounded transition ${modoEntrada==='scanner'?'bg-white shadow text-indigo-600':'text-gray-500'}`}>Scanner (Rápido)</button>
                                                 <button onClick={()=>setModoEntrada('massa')} className={`px-3 py-1 rounded transition ${modoEntrada==='massa'?'bg-white shadow text-indigo-600':'text-gray-500'}`}>Em Massa</button>
                                             </div>
                                         </div>
@@ -697,9 +725,9 @@
                                                 <form onSubmit={adicionarLote} className="flex gap-4 items-end">
                                                     <div className="flex-1">
                                                         <label className="block text-xs font-bold text-gray-500 mb-1">LOTE (BIPAR)</label>
-                                                        <input ref={loteInputRef} value={novoLote} onChange={e=>setNovoLote(e.target.value)} className="w-full border rounded-lg px-4 py-2 font-mono font-bold bg-yellow-50" placeholder="Código..." autoFocus />
+                                                        <input ref={loteInputRef} value={novoLote} onChange={e=>setNovoLote(e.target.value)} className="w-full border rounded-lg px-4 py-2 font-mono font-bold bg-yellow-50 text-xl border-yellow-200 focus:ring-4 focus:ring-yellow-100 focus:border-yellow-400" placeholder="Aguardando bipagem..." autoFocus />
                                                     </div>
-                                                    <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg h-[42px]">Salvar</button>
+                                                    <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg h-[46px]">Salvar</button>
                                                 </form>
                                             ) : (
                                                 <div className="space-y-3">
@@ -1042,7 +1070,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
-
-
