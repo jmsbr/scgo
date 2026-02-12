@@ -11,6 +11,11 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <!-- BIBLIOTECAS PARA EXPORTAÇÃO (NOVO) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
     <!-- FIREBASE SETUP -->
     <script type="module">
@@ -265,6 +270,86 @@
                     return matchTexto && matchBase && matchStatus && matchData;
                 });
             }, [lotes, filtroTexto, filtroBase, filtroStatus, dataInicio, dataFim]);
+
+            // --- FUNÇÕES DE EXPORTAÇÃO (NOVO) ---
+
+            const exportarCSV = () => {
+                if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
+                
+                const cabecalho = "Data;Lote;Base;Status;Periodo;Hora";
+                const linhas = lotesFiltradosRelatorio.map(l => 
+                    `${l.dataCriacao};${l.codigo};${l.baseSegmento};${l.status};${l.periodo};${l.horaCriacao}`
+                );
+                
+                const csvContent = "data:text/csv;charset=utf-8," + [cabecalho, ...linhas].join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `relatorio_lotes_${getTodayISO()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const exportarExcel = () => {
+                if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
+                
+                // Prepara dados para SheetJS
+                const dadosFormatados = lotesFiltradosRelatorio.map(l => ({
+                    "Data Criação": l.dataCriacao,
+                    "Hora": l.horaCriacao,
+                    "Código Lote": l.codigo,
+                    "Base/Segmento": l.baseSegmento,
+                    "Status": l.status,
+                    "Período": l.periodo
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório Lotes");
+                
+                // Ajusta largura das colunas
+                const wscols = [
+                    {wch:12}, {wch:10}, {wch:25}, {wch:30}, {wch:15}, {wch:10}
+                ];
+                worksheet['!cols'] = wscols;
+
+                XLSX.writeFile(workbook, `relatorio_lotes_${getTodayISO()}.xlsx`);
+            };
+
+            const exportarPDF = () => {
+                if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
+                if (!window.jspdf) return alert("Biblioteca PDF não carregou.");
+
+                const doc = new window.jspdf.jsPDF();
+                
+                doc.setFontSize(16);
+                doc.text("Relatório de Sistema de Lotes", 14, 20);
+                doc.setFontSize(10);
+                doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
+                doc.text(`Total de registros: ${lotesFiltradosRelatorio.length}`, 14, 32);
+
+                const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
+                const tableRows = lotesFiltradosRelatorio.map(l => [
+                    l.dataCriacao,
+                    l.horaCriacao,
+                    l.codigo,
+                    l.baseSegmento,
+                    l.status,
+                    l.periodo
+                ]);
+
+                doc.autoTable({
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: 36,
+                    theme: 'grid',
+                    styles: { fontSize: 8 },
+                    headStyles: { fillColor: [63, 81, 181] } // Indigo
+                });
+
+                doc.save(`relatorio_lotes_${getTodayISO()}.pdf`);
+            };
 
             // --- CONEXÃO FIREBASE ---
 
@@ -636,7 +721,18 @@
                                 <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row justify-between items-center gap-4">
                                     <h2 className="font-bold text-gray-700 flex gap-2 items-center uppercase text-sm"><Icons.FileText className="w-5 h-5"/> Relatório Geral</h2>
                                     <div className="flex gap-2 no-print">
-                                        <button onClick={() => window.print()} className="bg-slate-700 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-slate-800 transition"><Icons.Printer className="w-3 h-3"/> Print</button>
+                                        <button onClick={exportarCSV} className="bg-gray-600 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-gray-700 transition">
+                                            <Icons.FileText className="w-3 h-3"/> CSV
+                                        </button>
+                                        <button onClick={exportarExcel} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-green-700 transition">
+                                            <Icons.List className="w-3 h-3"/> Excel
+                                        </button>
+                                        <button onClick={exportarPDF} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-red-700 transition">
+                                            <Icons.Download className="w-3 h-3"/> PDF
+                                        </button>
+                                        <button onClick={() => window.print()} className="bg-slate-700 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-slate-800 transition">
+                                            <Icons.Printer className="w-3 h-3"/> Imprimir
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="p-4 border-b space-y-2 no-print">
