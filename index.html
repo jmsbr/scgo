@@ -54,7 +54,8 @@
                 grid-template-columns: repeat(5, 1fr);
                 gap: 2mm;
                 width: 100% !important;
-                height: 100%;
+                height: auto !important; /* Ajustado para auto para não cortar páginas */
+                min-height: 100%;
                 visibility: visible;
                 position: absolute; top: 0; left: 0;
                 background: white;
@@ -503,7 +504,11 @@
                 
                 // ORDENAÇÃO POR BASE SE FOR EMITIR TODOS
                 if (imprimirTudo) {
-                    filtrados.sort((a, b) => a.baseSegmento.localeCompare(b.baseSegmento));
+                    filtrados.sort((a, b) => {
+                        const baseA = a.baseSegmento || '';
+                        const baseB = b.baseSegmento || '';
+                        return baseA.localeCompare(baseB) || a.codigo.localeCompare(b.codigo);
+                    });
                 }
 
                 const pendentes = filtrados.filter(l => l.status === 'pendente');
