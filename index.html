@@ -46,42 +46,45 @@
     
     <style>
         @media print {
-            /* Oculta tudo por padrão */
-            body * {
-                visibility: hidden;
-            }
-            
-            /* Configuração da página e corpo para permitir fluxo total */
+            /* Configuração da página */
             @page { 
                 size: A4 landscape; 
                 margin: 5mm; 
             }
+            
             body, html {
+                background-color: white !important;
                 height: auto !important;
-                overflow: visible !important;
+                width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                overflow: visible !important;
             }
 
-            /* Torna visível apenas a área de impressão e seus filhos */
-            #area-impressao-etiquetas, #area-impressao-etiquetas * {
-                visibility: visible;
+            /* Oculta tudo que tem a classe no-print (menus, tabelas, etc) */
+            .no-print { 
+                display: none !important; 
             }
 
-            /* Posicionamento absoluto para cobrir a tela, mas permitindo scroll/paginação */
+            /* Reseta o container principal para não ocupar espaço extra */
+            #root > div {
+                min-height: 0 !important;
+                background: none !important;
+            }
+
+            /* Configura a área de etiquetas para fluir naturalmente */
             #area-impressao-etiquetas {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100% !important;
                 display: grid !important;
-                grid-template-columns: repeat(5, 1fr); /* 5 colunas fixas */
+                visibility: visible !important;
+                position: relative !important; /* Mudado de absolute para relative */
+                width: 100% !important;
+                grid-template-columns: repeat(5, 1fr);
                 gap: 2mm;
                 padding: 0;
                 margin: 0;
             }
 
-            /* Garante que os cards não quebrem no meio */
+            /* Configuração dos Cards */
             .label-card { 
                 border: 1px solid #000; 
                 height: 90mm; 
@@ -89,10 +92,9 @@
                 flex-direction: column; 
                 justify-content: space-between; 
                 padding: 2px; 
-                overflow: hidden; 
                 box-sizing: border-box;
-                break-inside: avoid;       /* Padrão moderno */
-                page-break-inside: avoid;  /* Legado */
+                break-inside: avoid;
+                page-break-inside: avoid;
                 background: white;
             }
 
@@ -406,7 +408,13 @@
                 doc.text("Relatório de Sistema de Lotes", 14, 20);
                 doc.setFontSize(10);
                 doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
-                doc.text(`Total de registros: ${lotesFiltradosRelatorio.length}`, 14, 32);
+                
+                // Stats calculation
+                const total = lotesFiltradosRelatorio.length;
+                const impressos = lotesFiltradosRelatorio.filter(l => l.status === 'impressao').length;
+                const pendentes = lotesFiltradosRelatorio.filter(l => l.status === 'pendente').length;
+
+                doc.text(`Filtros: ${filtroTexto || 'Nenhum'} | Base: ${filtroBase || 'Todas'} | Status: ${filtroStatus}`, 14, 32);
 
                 const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
                 const tableRows = lotesFiltradosRelatorio.map(l => [
@@ -424,7 +432,24 @@
                     startY: 36,
                     theme: 'grid',
                     styles: { fontSize: 8 },
-                    headStyles: { fillColor: [63, 81, 181] } // Indigo
+                    headStyles: { fillColor: [63, 81, 181] },
+                    didDrawPage: (data) => {
+                        const pageSize = doc.internal.pageSize;
+                        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+                        const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
+                        
+                        doc.setFontSize(8);
+                        
+                        // Summary (Left)
+                        const total = lotesFiltradosRelatorio.length;
+                        const impressos = lotesFiltradosRelatorio.filter(l => l.status === 'impressao').length;
+                        const pendentes = lotesFiltradosRelatorio.filter(l => l.status === 'pendente').length;
+                        doc.text(`Total: ${total} | Proc.: ${impressos} | Pend.: ${pendentes}`, 14, pageHeight - 10);
+
+                        // Page (Right)
+                        const pageCount = doc.internal.getNumberOfPages();
+                        doc.text(`Pág. ${pageCount}`, pageWidth - 20, pageHeight - 10);
+                    }
                 });
 
                 doc.save(`relatorio_lotes_${getTodayISO()}.pdf`);
