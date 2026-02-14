@@ -74,14 +74,27 @@
 
             /* Configura a área de etiquetas para fluir naturalmente */
             #area-impressao-etiquetas {
-                display: grid !important;
+                display: block !important; /* Alterado para block para permitir grupos */
                 visibility: visible !important;
-                position: relative !important; /* Mudado de absolute para relative */
+                position: relative !important; 
                 width: 100% !important;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 2mm;
                 padding: 0;
                 margin: 0;
+            }
+
+            /* Grupo de etiquetas por base (Grid interno) */
+            .print-group {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 2mm;
+                break-after: page;       /* Força quebra de página após o grupo */
+                page-break-after: always; /* Legado */
+            }
+
+            /* Remove quebra de página após o último grupo para não gerar folha em branco final */
+            .print-group:last-child {
+                break-after: auto;
+                page-break-after: auto;
             }
 
             /* Configuração dos Cards */
@@ -1010,10 +1023,36 @@
                     </main>
 
                     <div id="area-impressao-etiquetas" className="hidden">
-                        {lotesParaImprimir.map(l=>{
-                            const p = l.baseSegmento.split('—');
-                            return (<div key={l.id} className="label-card"><div className="label-header"><div><span className="header-title">SEGMENTO</span><div className="header-value">{p[0]||'GERAL'}</div></div><div><span className="header-title">BASE</span><div className="header-value">{p[1]||l.baseSegmento}</div></div></div><div className="label-content"><div style={{width:'80px',height:'80px'}}><QRCodeImage text={l.codigo} size={80}/></div><div className="label-text">{l.codigo}</div></div><div className="label-footer"><div className="footer-title">EXPEDIÇÃO</div><div className="check-item"><span className="check-box"></span> CONFERIDO</div><div className="footer-inputs"><span>{l.dataCriacao}</span><span>{l.horaCriacao}</span></div></div></div>)
-                        })}
+                        {Object.entries(
+                            lotesParaImprimir.reduce((acc, l) => {
+                                if (!acc[l.baseSegmento]) acc[l.baseSegmento] = [];
+                                acc[l.baseSegmento].push(l);
+                                return acc;
+                            }, {})
+                        ).map(([base, groupLotes], idx, arr) => (
+                            <div key={base} className="print-group">
+                                {groupLotes.map(l => {
+                                    const p = l.baseSegmento.split('—');
+                                    return (
+                                        <div key={l.id} className="label-card">
+                                            <div className="label-header">
+                                                <div><span className="header-title">SEGMENTO</span><div className="header-value">{p[0]||'GERAL'}</div></div>
+                                                <div><span className="header-title">BASE</span><div className="header-value">{p[1]||l.baseSegmento}</div></div>
+                                            </div>
+                                            <div className="label-content">
+                                                <div style={{width:'80px',height:'80px'}}><QRCodeImage text={l.codigo} size={80}/></div>
+                                                <div className="label-text">{l.codigo}</div>
+                                            </div>
+                                            <div className="label-footer">
+                                                <div className="footer-title">EXPEDIÇÃO</div>
+                                                <div className="check-item"><span className="check-box"></span> CONFERIDO</div>
+                                                <div className="footer-inputs"><span>{l.dataCriacao}</span><span>{l.horaCriacao}</span></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
