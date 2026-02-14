@@ -46,23 +46,56 @@
     
     <style>
         @media print {
-            body { background-color: white; margin: 0; padding: 0; }
-            .no-print { display: none !important; }
-            @page { size: A4 landscape; margin: 5mm; }
-            #area-impressao-etiquetas {
-                display: grid !important;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 2mm;
-                width: 100% !important;
-                height: auto !important; /* Ajustado para auto para não cortar páginas */
-                min-height: 100%;
-                visibility: visible;
-                position: absolute; top: 0; left: 0;
-                background: white;
-                z-index: 9999;
-                padding: 2mm;
+            /* Oculta tudo por padrão */
+            body * {
+                visibility: hidden;
             }
-            .label-card { border: 1px solid #000; height: 90mm; display: flex; flex-direction: column; justify-content: space-between; padding: 2px; page-break-inside: avoid; overflow: hidden; box-sizing: border-box; }
+            
+            /* Configuração da página e corpo para permitir fluxo total */
+            @page { 
+                size: A4 landscape; 
+                margin: 5mm; 
+            }
+            body, html {
+                height: auto !important;
+                overflow: visible !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Torna visível apenas a área de impressão e seus filhos */
+            #area-impressao-etiquetas, #area-impressao-etiquetas * {
+                visibility: visible;
+            }
+
+            /* Posicionamento absoluto para cobrir a tela, mas permitindo scroll/paginação */
+            #area-impressao-etiquetas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100% !important;
+                display: grid !important;
+                grid-template-columns: repeat(5, 1fr); /* 5 colunas fixas */
+                gap: 2mm;
+                padding: 0;
+                margin: 0;
+            }
+
+            /* Garante que os cards não quebrem no meio */
+            .label-card { 
+                border: 1px solid #000; 
+                height: 90mm; 
+                display: flex; 
+                flex-direction: column; 
+                justify-content: space-between; 
+                padding: 2px; 
+                overflow: hidden; 
+                box-sizing: border-box;
+                break-inside: avoid;       /* Padrão moderno */
+                page-break-inside: avoid;  /* Legado */
+                background: white;
+            }
+
             .label-header { border-bottom: 2px solid #000; display: flex; justify-content: space-around; padding-bottom: 2px; margin-bottom: 2px; }
             .header-title { font-size: 8px; font-weight: 700; color: #555; text-transform: uppercase; }
             .header-value { font-size: 14px; font-weight: 900; color: #000; line-height: 1; text-transform: uppercase; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -170,7 +203,8 @@
             const [novoPeriodo, setNovoPeriodo] = useState('Manhã'); 
             const loteInputRef = useRef(null);
 
-            const [baseParaImpressao, setBaseParaImpressao] = useState('');
+            // ESTADO DE SELEÇÃO MULTIPLA PARA IMPRESSÃO
+            const [basesSelecionadas, setBasesSelecionadas] = useState(new Set()); 
             const [periodoImpressao, setPeriodoImpressao] = useState('Todos'); 
             const [lotesParaImprimir, setLotesParaImprimir] = useState([]);
             const [selectedIds, setSelectedIds] = useState(new Set()); 
@@ -191,6 +225,9 @@
             const [dataParaMover, setDataParaMover] = useState('');
             const [baseParaAlterar, setBaseParaAlterar] = useState('');
 
+            // MONITORAMENTO NOVO
+            const [dataMonitoramento, setDataMonitoramento] = useState(getTodayISO());
+
             const [consultaTermo, setConsultaTermo] = useState('');
             const [now, setNow] = useState(Date.now());
 
@@ -209,6 +246,21 @@
             }, [novaBase]);
 
             // --- FUNÇÕES DE LOGICA ---
+
+            const toggleBaseImpressao = (base) => {
+                const newSet = new Set(basesSelecionadas);
+                if (newSet.has(base)) newSet.delete(base);
+                else newSet.add(base);
+                setBasesSelecionadas(newSet);
+            };
+
+            const toggleTodasBasesImpressao = () => {
+                if (basesSelecionadas.size === listaBases.length) {
+                    setBasesSelecionadas(new Set());
+                } else {
+                    setBasesSelecionadas(new Set(listaBases));
+                }
+            };
 
             const verificarAlerta10Horas = (timestamp) => {
                 if (!timestamp) return false;
@@ -271,6 +323,32 @@
                     return matchTexto && matchBase && matchStatus && matchData;
                 });
             }, [lotes, filtroTexto, filtroBase, filtroStatus, dataInicio, dataFim]);
+
+            // --- LOGICA MONITORAMENTO POR BASE ---
+            const statsPorBase = useMemo(() => {
+                const dataBR = formatDateToPTBR(dataMonitoramento);
+                
+                // Filtra lotes do dia selecionado
+                const lotesDoDia = lotes.filter(l => l.dataCriacao === dataBR);
+                
+                // Agrupa por base
+                const agrupamento = {};
+                listaBases.forEach(b => agrupamento[b] = 0); // Inicializa com 0
+                
+                lotesDoDia.forEach(l => {
+                    if (agrupamento[l.baseSegmento] !== undefined) {
+                        agrupamento[l.baseSegmento]++;
+                    } else {
+                        // Caso existam bases antigas que não estão mais na lista padrão, opcionalmente adicionamos
+                        agrupamento[l.baseSegmento] = (agrupamento[l.baseSegmento] || 0) + 1;
+                    }
+                });
+
+                // Converte para array e ordena por maior quantidade
+                return Object.entries(agrupamento)
+                    .map(([base, count]) => ({ base, count }))
+                    .sort((a, b) => b.count - a.count); // Ordena decrescente
+            }, [lotes, dataMonitoramento, listaBases]);
 
             // --- FUNÇÕES DE EXPORTAÇÃO (NOVO) ---
 
@@ -488,37 +566,33 @@
                 alert("Base alterada com sucesso!");
             };
 
-            const prepararImpressaoDoDia = async (imprimirTudo = false) => {
-                // Validação: Se não for imprimir tudo, exige base.
-                if (!imprimirTudo && !baseParaImpressao) return alert("Selecione a base ou use a opção 'Emitir Todos'.");
+            const prepararImpressaoDoDia = async () => {
+                if (basesSelecionadas.size === 0) return alert("Selecione ao menos uma base para imprimir.");
                 
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
                 
                 let filtrados = lotes.filter(l => 
-                    (imprimirTudo ? true : l.baseSegmento === baseParaImpressao) && // Se imprimirTudo, ignora filtro de base
+                    basesSelecionadas.has(l.baseSegmento) && // Filtra apenas bases selecionadas
                     l.dataCriacao === dataBR && 
                     (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao)
                 );
                 
                 if (filtrados.length === 0) return alert("Nada encontrado para os filtros selecionados.");
                 
-                // ORDENAÇÃO POR BASE SE FOR EMITIR TODOS
-                if (imprimirTudo) {
-                    filtrados.sort((a, b) => {
-                        const baseA = a.baseSegmento || '';
-                        const baseB = b.baseSegmento || '';
-                        return baseA.localeCompare(baseB) || a.codigo.localeCompare(b.codigo);
-                    });
-                }
+                // ORDENAÇÃO POR BASE
+                filtrados.sort((a, b) => {
+                    const baseA = a.baseSegmento || '';
+                    const baseB = b.baseSegmento || '';
+                    return baseA.localeCompare(baseB) || a.codigo.localeCompare(b.codigo);
+                });
 
                 const pendentes = filtrados.filter(l => l.status === 'pendente');
                 if (pendentes.length > 0) {
-                    // Confirmação de segurança se for imprimir muita coisa de uma vez
-                    if(imprimirTudo && !confirm(`Atenção: Você vai processar ${pendentes.length} itens de TODAS as bases. Confirma?`)) return;
+                    if(!confirm(`Serão processados ${pendentes.length} itens de ${basesSelecionadas.size} bases. Confirma?`)) return;
 
                     const batch = window.fb.writeBatch(window.db);
                     pendentes.forEach(p => {
-                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Fechamento ${periodoImpressao} ${imprimirTudo ? '(Geral)' : ''}` }];
+                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Fechamento ${periodoImpressao} (Em Massa)` }];
                         batch.update(window.fb.doc(window.db, "lotes", p.id), { status: 'impressao', historico: h });
                     });
                     await batch.commit();
@@ -632,24 +706,29 @@
                                             )}
                                         </div>
                                     </div>
-                                    <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm">
+                                    <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm flex flex-col">
                                         <h2 className="font-bold text-indigo-900 mb-4 uppercase text-[10px] flex gap-2"><Icons.Printer className="w-4 h-4"/> Impressão Diária</h2>
-                                        <div className="space-y-3">
-                                            <select value={baseParaImpressao} onChange={e=>setBaseParaImpressao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"><option value="">SELECIONE BASE</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
+                                        
+                                        <div className="space-y-3 flex-1 flex flex-col">
                                             <input type="date" value={dataImpressaoMassa} onChange={e=>setDataImpressaoMassa(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none" />
                                             <select value={periodoImpressao} onChange={e=>setPeriodoImpressao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"><option value="Todos">TODOS PERIODOS</option><option value="Manhã">MANHÃ</option><option value="Tarde">TARDE</option></select>
                                             
-                                            <div className="flex gap-2 pt-2">
-                                                <button onClick={()=>prepararImpressaoDoDia(false)} className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg text-[10px] hover:bg-indigo-700 uppercase shadow-sm">
-                                                    Por Base
-                                                </button>
-                                                <button onClick={()=>prepararImpressaoDoDia(true)} className="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg text-[10px] hover:bg-slate-900 uppercase shadow-sm border border-slate-600">
-                                                    Emitir Todos
-                                                </button>
+                                            <div className="flex-1 bg-white border rounded-lg p-2 overflow-y-auto max-h-40 space-y-1">
+                                                <div className="flex items-center gap-2 border-b pb-1 mb-1 sticky top-0 bg-white z-10">
+                                                    <input type="checkbox" checked={basesSelecionadas.size === listaBases.length && listaBases.length > 0} onChange={toggleTodasBasesImpressao} className="cursor-pointer"/>
+                                                    <span className="text-[10px] font-bold uppercase text-gray-700">Selecionar Todas</span>
+                                                </div>
+                                                {listaBases.map(b => (
+                                                    <div key={b} className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded">
+                                                        <input type="checkbox" checked={basesSelecionadas.has(b)} onChange={()=>toggleBaseImpressao(b)} className="cursor-pointer"/>
+                                                        <span className="text-[9px] uppercase truncate text-gray-600 font-medium cursor-pointer" onClick={()=>toggleBaseImpressao(b)}>{b}</span>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <p className="text-[9px] text-center text-indigo-400 font-bold mt-1">
-                                                *Emitir Todos ignora a base selecionada
-                                            </p>
+
+                                            <button onClick={prepararImpressaoDoDia} className="w-full bg-slate-800 text-white font-bold py-3 rounded-lg text-[10px] hover:bg-slate-900 uppercase shadow-sm border border-slate-600 flex items-center justify-center gap-2">
+                                                <Icons.Printer className="w-3 h-3"/> Gerar Etiquetas ({basesSelecionadas.size})
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -730,21 +809,59 @@
                         )}
 
                         {activeTab === 'monitoramento' && (
-                            <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-                                <h2 className="text-xl font-bold mb-6 flex gap-2 items-center tracking-tight text-gray-700">
-                                    <Icons.Activity className="text-red-600"/> Monitor de Atrasos (+10H)
-                                </h2>
-                                {alertas.length > 0 ? (
-                                    <div className="space-y-4">{alertas.map(l=>(
-                                        <div key={l.id} className="p-4 border-l-4 border-red-500 bg-red-50 flex justify-between items-center rounded-r-lg shadow-sm">
-                                            <div>
-                                                <div className="font-bold text-red-800 text-lg uppercase font-mono">{l.codigo}</div>
-                                                <div className="text-xs text-red-600">Aguardando na base <strong>{l.baseSegmento}</strong> há {((now - l.timestampCriacao)/3600000).toFixed(1)}h</div>
-                                            </div>
-                                            <button onClick={()=>mudarStatus(l.id,'impressao')} className="bg-red-600 text-white px-4 py-2 rounded font-bold text-xs shadow-md uppercase hover:bg-red-700 transition">Baixar Agora</button>
+                            <div className="space-y-6">
+                                {/* PAINEL DE CONTAGEM DIÁRIA */}
+                                <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-xl font-bold flex gap-2 items-center tracking-tight text-gray-700">
+                                            <Icons.Layers className="text-indigo-600"/> Produção Diária por Base
+                                        </h2>
+                                        <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase">Data Ref:</span>
+                                            <input 
+                                                type="date" 
+                                                value={dataMonitoramento} 
+                                                onChange={e => setDataMonitoramento(e.target.value)} 
+                                                className="text-xs font-bold bg-white border rounded px-2 py-1 focus:outline-none"
+                                            />
                                         </div>
-                                    ))}</div>
-                                ) : <div className="text-center p-12 text-gray-400">Nenhum lote com atraso crítico.</div>}
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                        {statsPorBase.map((stat, idx) => (
+                                            <div key={idx} className="bg-gradient-to-br from-white to-gray-50 border p-4 rounded-xl shadow-sm flex flex-col items-center justify-center text-center hover:shadow-md transition">
+                                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                                                    {stat.base.split('—')[0] || 'BASE'}
+                                                </div>
+                                                <div className="text-[10px] font-black text-indigo-900 uppercase leading-tight h-8 flex items-center justify-center">
+                                                    {stat.base.split('—')[1] || stat.base}
+                                                </div>
+                                                <div className="text-3xl font-black text-indigo-600 mt-2">
+                                                    {stat.count}
+                                                </div>
+                                                <div className="text-[8px] text-gray-400 mt-1 uppercase">Lotes Gerados</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* LISTA DE ATRASOS CRÍTICOS */}
+                                <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
+                                    <h2 className="text-xl font-bold mb-6 flex gap-2 items-center tracking-tight text-gray-700">
+                                        <Icons.Activity className="text-red-600"/> Monitor de Atrasos (+10H)
+                                    </h2>
+                                    {alertas.length > 0 ? (
+                                        <div className="space-y-4">{alertas.map(l=>(
+                                            <div key={l.id} className="p-4 border-l-4 border-red-500 bg-red-50 flex justify-between items-center rounded-r-lg shadow-sm">
+                                                <div>
+                                                    <div className="font-bold text-red-800 text-lg uppercase font-mono">{l.codigo}</div>
+                                                    <div className="text-xs text-red-600">Aguardando na base <strong>{l.baseSegmento}</strong> há {((now - l.timestampCriacao)/3600000).toFixed(1)}h</div>
+                                                </div>
+                                                <button onClick={()=>mudarStatus(l.id,'impressao')} className="bg-red-600 text-white px-4 py-2 rounded font-bold text-xs shadow-md uppercase hover:bg-red-700 transition">Baixar Agora</button>
+                                            </div>
+                                        ))}</div>
+                                    ) : <div className="text-center p-12 text-gray-400">Nenhum lote com atraso crítico.</div>}
+                                </div>
                             </div>
                         )}
 
