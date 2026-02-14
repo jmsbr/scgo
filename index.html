@@ -601,6 +601,24 @@
                 setTimeout(() => window.print(), 500);
             };
 
+            // --- ESTATISTICAS IMPRESSAO DIARIA (NOVO) ---
+            const statsImpressao = useMemo(() => {
+                const dataBR = formatDateToPTBR(dataImpressaoMassa);
+                const temSelecao = basesSelecionadas.size > 0;
+                
+                const filtrados = lotes.filter(l => 
+                    l.dataCriacao === dataBR &&
+                    (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao) &&
+                    (!temSelecao || basesSelecionadas.has(l.baseSegmento))
+                );
+
+                return {
+                    total: filtrados.length,
+                    impressos: filtrados.filter(l => l.status === 'impressao').length,
+                    pendentes: filtrados.filter(l => l.status === 'pendente').length
+                };
+            }, [lotes, dataImpressaoMassa, periodoImpressao, basesSelecionadas]);
+
             // --- FILTROS DE INTERFACE ---
 
             const pendentes = lotes.filter(l => l.status === 'pendente');
@@ -729,6 +747,24 @@
                                             <button onClick={prepararImpressaoDoDia} className="w-full bg-slate-800 text-white font-bold py-3 rounded-lg text-[10px] hover:bg-slate-900 uppercase shadow-sm border border-slate-600 flex items-center justify-center gap-2">
                                                 <Icons.Printer className="w-3 h-3"/> Gerar Etiquetas ({basesSelecionadas.size})
                                             </button>
+
+                                            <div className="mt-auto pt-3 border-t border-indigo-200">
+                                                <div className="text-[9px] text-center text-indigo-800 font-bold mb-1 uppercase opacity-70">Resumo da Seleção</div>
+                                                <div className="grid grid-cols-3 gap-2 text-center">
+                                                    <div className="bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
+                                                        <div className="text-[8px] text-gray-400 uppercase font-bold">Gerados</div>
+                                                        <div className="text-sm font-black text-indigo-900">{statsImpressao.total}</div>
+                                                    </div>
+                                                    <div className="bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
+                                                        <div className="text-[8px] text-gray-400 uppercase font-bold">Impressos</div>
+                                                        <div className="text-sm font-black text-green-600">{statsImpressao.impressos}</div>
+                                                    </div>
+                                                    <div className="bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
+                                                        <div className="text-[8px] text-gray-400 uppercase font-bold">Faltam</div>
+                                                        <div className="text-sm font-black text-orange-500">{statsImpressao.pendentes}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
