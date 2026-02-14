@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Lotes</title>
+    <title>Sistema de Lotes - Impressão Geral</title>
     
     <!-- Bibliotecas de Estilo e React -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
-    <!-- BIBLIOTECAS PARA EXPORTAÇÃO (NOVO) -->
+    <!-- BIBLIOTECAS PARA EXPORTAÇÃO -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -487,17 +487,28 @@
                 alert("Base alterada com sucesso!");
             };
 
-            const prepararImpressaoDoDia = async () => {
-                if (!baseParaImpressao) return alert("Selecione a base.");
+            const prepararImpressaoDoDia = async (imprimirTudo = false) => {
+                // Validação: Se não for imprimir tudo, exige base.
+                if (!imprimirTudo && !baseParaImpressao) return alert("Selecione a base ou use a opção 'Emitir Todos'.");
+                
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
-                const filtrados = lotes.filter(l => l.baseSegmento === baseParaImpressao && l.dataCriacao === dataBR && (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao));
-                if (filtrados.length === 0) return alert("Nada encontrado.");
+                
+                const filtrados = lotes.filter(l => 
+                    (imprimirTudo ? true : l.baseSegmento === baseParaImpressao) && // Se imprimirTudo, ignora filtro de base
+                    l.dataCriacao === dataBR && 
+                    (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao)
+                );
+                
+                if (filtrados.length === 0) return alert("Nada encontrado para os filtros selecionados.");
                 
                 const pendentes = filtrados.filter(l => l.status === 'pendente');
-                if (pendentes.length > 0 && periodoImpressao !== 'Todos') {
+                if (pendentes.length > 0) {
+                    // Confirmação de segurança se for imprimir muita coisa de uma vez
+                    if(imprimirTudo && !confirm(`Atenção: Você vai processar ${pendentes.length} itens de TODAS as bases. Confirma?`)) return;
+
                     const batch = window.fb.writeBatch(window.db);
                     pendentes.forEach(p => {
-                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Fechamento ${periodoImpressao}` }];
+                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Fechamento ${periodoImpressao} ${imprimirTudo ? '(Geral)' : ''}` }];
                         batch.update(window.fb.doc(window.db, "lotes", p.id), { status: 'impressao', historico: h });
                     });
                     await batch.commit();
@@ -616,8 +627,19 @@
                                         <div className="space-y-3">
                                             <select value={baseParaImpressao} onChange={e=>setBaseParaImpressao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"><option value="">SELECIONE BASE</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                             <input type="date" value={dataImpressaoMassa} onChange={e=>setDataImpressaoMassa(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none" />
-                                            <select value={periodoImpressao} onChange={e=>setPeriodoImpressao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"><option value="Todos">TODOS</option><option value="Manhã">MANHÃ</option><option value="Tarde">TARDE</option></select>
-                                            <button onClick={prepararImpressaoDoDia} className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-[10px] hover:bg-indigo-700 uppercase">Gerar Etiquetas</button>
+                                            <select value={periodoImpressao} onChange={e=>setPeriodoImpressao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"><option value="Todos">TODOS PERIODOS</option><option value="Manhã">MANHÃ</option><option value="Tarde">TARDE</option></select>
+                                            
+                                            <div className="flex gap-2 pt-2">
+                                                <button onClick={()=>prepararImpressaoDoDia(false)} className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg text-[10px] hover:bg-indigo-700 uppercase shadow-sm">
+                                                    Por Base
+                                                </button>
+                                                <button onClick={()=>prepararImpressaoDoDia(true)} className="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg text-[10px] hover:bg-slate-900 uppercase shadow-sm border border-slate-600">
+                                                    Emitir Todos
+                                                </button>
+                                            </div>
+                                            <p className="text-[9px] text-center text-indigo-400 font-bold mt-1">
+                                                *Emitir Todos ignora a base selecionada
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
