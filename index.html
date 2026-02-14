@@ -493,7 +493,7 @@
                 
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
                 
-                const filtrados = lotes.filter(l => 
+                let filtrados = lotes.filter(l => 
                     (imprimirTudo ? true : l.baseSegmento === baseParaImpressao) && // Se imprimirTudo, ignora filtro de base
                     l.dataCriacao === dataBR && 
                     (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao)
@@ -501,6 +501,11 @@
                 
                 if (filtrados.length === 0) return alert("Nada encontrado para os filtros selecionados.");
                 
+                // ORDENAÇÃO POR BASE SE FOR EMITIR TODOS
+                if (imprimirTudo) {
+                    filtrados.sort((a, b) => a.baseSegmento.localeCompare(b.baseSegmento));
+                }
+
                 const pendentes = filtrados.filter(l => l.status === 'pendente');
                 if (pendentes.length > 0) {
                     // Confirmação de segurança se for imprimir muita coisa de uma vez
