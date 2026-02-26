@@ -156,7 +156,8 @@
             Code: (props) => <Icon {...props} path={<React.Fragment><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></React.Fragment>} />,
             X: (props) => <Icon {...props} path={<React.Fragment><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></React.Fragment>} />,
             Calendar: (props) => <Icon {...props} path={<React.Fragment><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></React.Fragment>} />,
-            List: (props) => <Icon {...props} path={<React.Fragment><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></React.Fragment>} />
+            List: (props) => <Icon {...props} path={<React.Fragment><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></React.Fragment>} />,
+            Settings: (props) => <Icon {...props} path={<React.Fragment><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></React.Fragment>} />
         };
 
         const LISTA_PADRAO = [
@@ -207,7 +208,15 @@
 
         function App() {
             const [activeTab, setActiveTab] = useState('operacao');
+            
+            // ESTADO DAS BASES
             const [listaBases, setListaBases] = useState(LISTA_PADRAO);
+            const [basesExtras, setBasesExtras] = useState([]); // Bases customizadas vindas do banco
+
+            // ESTADOS ADMINISTRATIVOS
+            const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+            const [novaBaseAdmin, setNovaBaseAdmin] = useState('');
+
             const [lotes, setLotes] = useState([]);
             const [dbConnected, setDbConnected] = useState(false);
 
@@ -258,7 +267,26 @@
                     playErrorSound();
                 }
                 lastBaseStatusRef.current = !novaBase || isValid;
-            }, [novaBase]);
+            }, [novaBase, listaBases]);
+
+            // --- CONTROLE DE ABAS E SEGURANÇA ---
+            const handleTabClick = (key) => {
+                if (key === 'admin') {
+                    if (!isAdminUnlocked) {
+                        const pass = prompt("Acesso Administrativo Restrito. Digite a senha:");
+                        if (pass === SENHA_MESTRA) {
+                            setIsAdminUnlocked(true);
+                            setActiveTab(key);
+                        } else if (pass !== null) {
+                            alert("Senha Incorreta!");
+                        }
+                    } else {
+                        setActiveTab(key);
+                    }
+                } else {
+                    setActiveTab(key);
+                }
+            };
 
             // --- FUNÇÕES DE LOGICA ---
 
@@ -422,11 +450,6 @@
                 doc.setFontSize(10);
                 doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
                 
-                // Stats calculation
-                const total = lotesFiltradosRelatorio.length;
-                const impressos = lotesFiltradosRelatorio.filter(l => l.status === 'impressao').length;
-                const pendentes = lotesFiltradosRelatorio.filter(l => l.status === 'pendente').length;
-
                 doc.text(`Filtros: ${filtroTexto || 'Nenhum'} | Base: ${filtroBase || 'Todas'} | Status: ${filtroStatus}`, 14, 32);
 
                 const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
@@ -474,13 +497,33 @@
                 const iniciarConexao = () => {
                     if (window.db && window.fb) {
                         setDbConnected(true);
-                        const q = window.fb.query(window.fb.collection(window.db, "lotes"), window.fb.orderBy("timestampCriacao", "desc"));
-                        const unsubscribe = window.fb.onSnapshot(q, (snapshot) => {
+                        
+                        // OUVINTE 1: LOTES PRINCIPAIS
+                        const qLotes = window.fb.query(window.fb.collection(window.db, "lotes"), window.fb.orderBy("timestampCriacao", "desc"));
+                        const unsubLotes = window.fb.onSnapshot(qLotes, (snapshot) => {
                             const list = [];
                             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
                             setLotes(list);
                         }, (err) => console.error(err));
-                        return unsubscribe;
+
+                        // OUVINTE 2: BASES EXTRAS CADASTRADAS PELO ADMIN
+                        const qBases = window.fb.query(window.fb.collection(window.db, "segmentos_extras"));
+                        const unsubBases = window.fb.onSnapshot(qBases, (snapshot) => {
+                            const listExtras = [];
+                            snapshot.forEach(doc => listExtras.push({ ...doc.data(), id: doc.id }));
+                            setBasesExtras(listExtras);
+                            
+                            // Atualiza a lista geral unindo a lista padrão com as bases extras
+                            const nomesExtras = listExtras.map(b => b.nome);
+                            // Set elimina duplicatas e sort organiza em ordem alfabetica
+                            const listaUnificada = Array.from(new Set([...LISTA_PADRAO, ...nomesExtras])).sort();
+                            setListaBases(listaUnificada);
+                        }, (err) => console.error("Erro ao carregar bases extras:", err));
+
+                        return () => { 
+                            unsubLotes(); 
+                            unsubBases(); 
+                        };
                     }
                 };
                 if (window.dbReady) {
@@ -496,6 +539,41 @@
                 const interval = setInterval(() => setNow(Date.now()), 60000);
                 return () => clearInterval(interval);
             }, []);
+
+            // --- AÇÕES DO ADMIN (NOVO) ---
+            
+            const adicionarNovaBaseAdmin = async () => {
+                const nome = novaBaseAdmin.trim().toUpperCase();
+                if (!nome) return;
+                
+                if (listaBases.includes(nome)) {
+                    playErrorSound();
+                    return alert("Esta base já existe no sistema!");
+                }
+
+                try {
+                    await window.fb.addDoc(window.fb.collection(window.db, "segmentos_extras"), {
+                        nome: nome,
+                        dataCriacao: new Date().toISOString()
+                    });
+                    setNovaBaseAdmin('');
+                } catch (error) {
+                    console.error("Erro ao adicionar base:", error);
+                    alert("Erro ao adicionar a base.");
+                }
+            };
+
+            const removerBaseExtraAdmin = async (id, nomeBase) => {
+                if(confirm(`Tem certeza que deseja remover a base "${nomeBase}"?\nIsso não apagará os lotes antigos, mas ela deixará de aparecer na lista de seleção.`)) {
+                    try {
+                        await window.fb.deleteDoc(window.fb.doc(window.db, "segmentos_extras", id));
+                    } catch (error) {
+                        console.error("Erro ao remover base:", error);
+                        alert("Erro ao remover a base.");
+                    }
+                }
+            };
+
 
             // --- AÇÕES DO USUÁRIO ---
 
@@ -674,6 +752,7 @@
                 monitoramento: { label: 'Monitor', icon: <Icons.Activity className="w-4 h-4"/> },
                 relatorio: { label: 'Relatórios', icon: <Icons.FileText className="w-4 h-4"/> },
                 consulta: { label: 'Consulta', icon: <Icons.Search className="w-4 h-4"/> },
+                admin: { label: 'Admin', icon: <Icons.Settings className="w-4 h-4"/> },
             };
 
             return (
@@ -695,11 +774,12 @@
                                 {Object.entries(tabConfig).map(([key, config]) => (
                                     <button 
                                         key={key} 
-                                        onClick={()=>setActiveTab(key)} 
-                                        className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition ${activeTab===key?'bg-indigo-600 shadow text-white':'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                                        onClick={()=>handleTabClick(key)} 
+                                        className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition ${activeTab===key?'bg-indigo-600 shadow text-white':'text-slate-300 hover:bg-slate-700 hover:text-white'} ${key==='admin' && !isAdminUnlocked ? 'text-orange-300' : ''}`}
                                     >
                                         {config.icon}
                                         {config.label}
+                                        {key === 'admin' && !isAdminUnlocked && <span className="ml-1 opacity-50">🔒</span>}
                                         {key === 'monitoramento' && alertas.length > 0 && (
                                             <span className="bg-red-500 text-white px-1.5 rounded-full text-[10px] animate-pulse">
                                                 {alertas.length}
@@ -1017,6 +1097,88 @@
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* NOVA ABA ADMINISTRATIVA */}
+                        {activeTab === 'admin' && (
+                            <div className="max-w-3xl mx-auto space-y-6">
+                                <div className="bg-white p-8 rounded-xl shadow border border-gray-200">
+                                    <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+                                        <div className="bg-indigo-100 p-3 rounded-full">
+                                            <Icons.Settings className="w-6 h-6 text-indigo-700"/>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Gestão de Bases e Segmentos</h2>
+                                            <p className="text-xs text-gray-500 mt-1 font-medium">Adicione novas bases para expandir o sistema sem precisar alterar o código.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-6 rounded-xl border mb-8 shadow-inner">
+                                        <h3 className="text-xs font-bold text-gray-600 uppercase mb-4">Adicionar Nova Base</h3>
+                                        <div className="flex flex-col md:flex-row gap-3">
+                                            <input
+                                                value={novaBaseAdmin}
+                                                onChange={(e) => setNovaBaseAdmin(e.target.value)}
+                                                placeholder="Ex: 799-00 — NOVA BASE - UF"
+                                                className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 uppercase font-bold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition outline-none text-sm shadow-sm"
+                                            />
+                                            <button 
+                                                onClick={adicionarNovaBaseAdmin} 
+                                                className="bg-indigo-600 text-white font-black px-8 py-3 rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition uppercase text-xs tracking-wider"
+                                            >
+                                                Salvar Base
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 mt-2 font-medium">Siga o padrão sugerido: <span className="font-mono bg-white px-1 border rounded">CODIGO — NOME - UF</span></p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div>
+                                            <h3 className="font-bold text-gray-700 mb-4 text-xs uppercase flex items-center justify-between border-b pb-2">
+                                                Bases Personalizadas
+                                                <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px]">{basesExtras.length}</span>
+                                            </h3>
+                                            
+                                            {basesExtras.length === 0 ? (
+                                                <div className="text-center p-8 border-2 border-dashed rounded-xl text-gray-400 text-xs font-medium">
+                                                    Nenhuma base extra adicionada.<br/>Use o campo acima para expandir.
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                                                    {basesExtras.map(b => (
+                                                        <div key={b.id} className="flex justify-between items-center p-3 border rounded-lg bg-white shadow-sm hover:border-indigo-300 transition group">
+                                                            <span className="font-bold text-[11px] uppercase text-gray-700">{b.nome}</span>
+                                                            <button 
+                                                                onClick={() => removerBaseExtraAdmin(b.id, b.nome)} 
+                                                                className="text-gray-300 hover:text-red-500 p-1 rounded transition bg-gray-50 hover:bg-red-50"
+                                                                title="Remover esta base"
+                                                            >
+                                                                <Icons.Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-700 mb-4 text-xs uppercase flex items-center justify-between border-b pb-2">
+                                                Bases Padrão (Sistema)
+                                                <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-[10px]">{LISTA_PADRAO.length}</span>
+                                            </h3>
+                                            <div className="bg-gray-50 p-3 rounded-xl border">
+                                                <div className="grid grid-cols-1 gap-1 max-h-[300px] overflow-y-auto">
+                                                    {LISTA_PADRAO.map(b => (
+                                                        <div key={b} className="text-[10px] font-bold text-gray-500 bg-white border px-3 py-2 rounded shadow-sm truncate">
+                                                            {b}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
