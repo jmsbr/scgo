@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Lotes - Impressão Geral</title>
+    <title>Sistema de Lotes - Alta Performance</title>
     
     <!-- Bibliotecas de Estilo e React -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,11 +17,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
-    <!-- FIREBASE SETUP -->
+    <!-- FIREBASE SETUP OTIMIZADO -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        // IMPORTANTE: Adicionado initializeFirestore, persistentLocalCache, limit para performance e segurança de dados
         import { 
-            getFirestore, collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, writeBatch 
+            initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+            collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, limit
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -35,10 +37,14 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        
+        // OTIMIZAÇÃO CRÍTICA 1: Habilita cache offline. Evita "perda de informação" se a internet piscar
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+        });
 
         window.db = db;
-        window.fb = { collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, writeBatch };
+        window.fb = { collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, limit };
         
         window.dbReady = true;
         window.dispatchEvent(new Event('db-ready'));
@@ -46,71 +52,14 @@
     
     <style>
         @media print {
-            /* Configuração da página */
-            @page { 
-                size: A4 landscape; 
-                margin: 5mm; 
-            }
-            
-            body, html {
-                background-color: white !important;
-                height: auto !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: visible !important;
-            }
-
-            /* Oculta tudo que tem a classe no-print (menus, tabelas, etc) */
-            .no-print { 
-                display: none !important; 
-            }
-
-            /* Reseta o container principal para não ocupar espaço extra */
-            #root > div {
-                min-height: 0 !important;
-                background: none !important;
-            }
-
-            /* Configura a área de etiquetas para fluir naturalmente */
-            #area-impressao-etiquetas {
-                display: block !important; /* Alterado para block para permitir grupos */
-                visibility: visible !important;
-                position: relative !important; 
-                width: 100% !important;
-                padding: 0;
-                margin: 0;
-            }
-
-            /* Grupo de etiquetas por base (Grid interno) */
-            .print-group {
-                display: grid;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 2mm;
-                break-after: page;       /* Força quebra de página após o grupo */
-                page-break-after: always; /* Legado */
-            }
-
-            /* Remove quebra de página após o último grupo para não gerar folha em branco final */
-            .print-group:last-child {
-                break-after: auto;
-                page-break-after: auto;
-            }
-
-            /* Configuração dos Cards */
-            .label-card { 
-                border: 1px solid #000; 
-                height: 90mm; 
-                display: flex; 
-                flex-direction: column; 
-                justify-content: space-between; 
-                padding: 2px; 
-                box-sizing: border-box;
-                break-inside: avoid;
-                page-break-inside: avoid;
-                background: white;
-            }
-
+            @page { size: A4 landscape; margin: 5mm; }
+            body, html { background-color: white !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+            .no-print { display: none !important; }
+            #root > div { min-height: 0 !important; background: none !important; }
+            #area-impressao-etiquetas { display: block !important; visibility: visible !important; position: relative !important; width: 100% !important; padding: 0; margin: 0; }
+            .print-group { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; break-after: page; page-break-after: always; }
+            .print-group:last-child { break-after: auto; page-break-after: auto; }
+            .label-card { border: 1px solid #000; height: 90mm; display: flex; flex-direction: column; justify-content: space-between; padding: 2px; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; background: white; }
             .label-header { border-bottom: 2px solid #000; display: flex; justify-content: space-around; padding-bottom: 2px; margin-bottom: 2px; }
             .header-title { font-size: 8px; font-weight: 700; color: #555; text-transform: uppercase; }
             .header-value { font-size: 14px; font-weight: 900; color: #000; line-height: 1; text-transform: uppercase; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -122,29 +71,32 @@
             .check-box { width: 10px; height: 10px; border: 1px solid #000; display: inline-block; }
             .footer-inputs { display: flex; justify-content: space-between; margin-top: 4px; font-size: 7px; font-weight: bold; border-top: 1px dotted #ccc; }
         }
-        
         .invalid-base { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
         .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        /* Otimização de Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        const Icon = ({ path, className }) => (
+        const Icon = React.memo(({ path, className }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {path}
             </svg>
-        );
+        ));
 
         const Icons = {
             Plus: (props) => <Icon {...props} path={<React.Fragment><path d="M5 12h14"/><path d="M12 5v14"/></React.Fragment>} />,
             Printer: (props) => <Icon {...props} path={<React.Fragment><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></React.Fragment>} />,
             Package: (props) => <Icon {...props} path={<React.Fragment><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></React.Fragment>} />,
-            ArrowRight: (props) => <Icon {...props} path={<React.Fragment><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></React.Fragment>} />,
             Trash2: (props) => <Icon {...props} path={<React.Fragment><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></React.Fragment>} />,
             Layers: (props) => <Icon {...props} path={<React.Fragment><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></React.Fragment>} />,
             FileText: (props) => <Icon {...props} path={<React.Fragment><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></React.Fragment>} />,
@@ -153,8 +105,6 @@
             CheckSquare: (props) => <Icon {...props} path={<React.Fragment><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></React.Fragment>} />,
             Activity: (props) => <Icon {...props} path={<React.Fragment><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></React.Fragment>} />,
             Download: (props) => <Icon {...props} path={<React.Fragment><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></React.Fragment>} />,
-            Code: (props) => <Icon {...props} path={<React.Fragment><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></React.Fragment>} />,
-            X: (props) => <Icon {...props} path={<React.Fragment><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></React.Fragment>} />,
             Calendar: (props) => <Icon {...props} path={<React.Fragment><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></React.Fragment>} />,
             List: (props) => <Icon {...props} path={<React.Fragment><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></React.Fragment>} />,
             Settings: (props) => <Icon {...props} path={<React.Fragment><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></React.Fragment>} />
@@ -196,7 +146,8 @@
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
-        const QRCodeImage = ({ text, size = 100 }) => {
+        // OTIMIZAÇÃO CRÍTICA 3: React.memo impede o recálculo brutal do QR Code durante a rolagem ou digitação
+        const QRCodeImage = React.memo(({ text, size = 100 }) => {
             const canvasRef = useRef(null);
             useEffect(() => {
                 if (window.QRious && canvasRef.current) {
@@ -204,16 +155,14 @@
                 }
             }, [text, size]);
             return <canvas ref={canvasRef} width={size} height={size} style={{ width: '100%', height: 'auto' }} />;
-        };
+        });
 
         function App() {
             const [activeTab, setActiveTab] = useState('operacao');
             
-            // ESTADO DAS BASES
             const [listaBases, setListaBases] = useState(LISTA_PADRAO);
-            const [basesExtras, setBasesExtras] = useState([]); // Bases customizadas vindas do banco
+            const [basesExtras, setBasesExtras] = useState([]); 
 
-            // ESTADOS ADMINISTRATIVOS
             const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
             const [novaBaseAdmin, setNovaBaseAdmin] = useState('');
 
@@ -227,7 +176,6 @@
             const [novoPeriodo, setNovoPeriodo] = useState('Manhã'); 
             const loteInputRef = useRef(null);
 
-            // ESTADO DE SELEÇÃO MULTIPLA PARA IMPRESSÃO
             const [basesSelecionadas, setBasesSelecionadas] = useState(new Set()); 
             const [periodoImpressao, setPeriodoImpressao] = useState('Todos'); 
             const [lotesParaImprimir, setLotesParaImprimir] = useState([]);
@@ -249,16 +197,13 @@
             const [dataParaMover, setDataParaMover] = useState('');
             const [baseParaAlterar, setBaseParaAlterar] = useState('');
 
-            // MONITORAMENTO NOVO
             const [dataMonitoramento, setDataMonitoramento] = useState(getTodayISO());
-
             const [consultaTermo, setConsultaTermo] = useState('');
             const [now, setNow] = useState(Date.now());
 
             const SENHA_MESTRA = "JT@2026";
-            const isBaseValida = (base) => listaBases.includes(base);
+            const isBaseValida = useCallback((base) => listaBases.includes(base), [listaBases]);
 
-            // Controle para evitar beeps infinitos ao digitar
             const lastBaseStatusRef = useRef(true);
 
             useEffect(() => {
@@ -267,9 +212,8 @@
                     playErrorSound();
                 }
                 lastBaseStatusRef.current = !novaBase || isValid;
-            }, [novaBase, listaBases]);
+            }, [novaBase, isBaseValida]);
 
-            // --- CONTROLE DE ABAS E SEGURANÇA ---
             const handleTabClick = (key) => {
                 if (key === 'admin') {
                     if (!isAdminUnlocked) {
@@ -288,8 +232,6 @@
                 }
             };
 
-            // --- FUNÇÕES DE LOGICA ---
-
             const toggleBaseImpressao = (base) => {
                 const newSet = new Set(basesSelecionadas);
                 if (newSet.has(base)) newSet.delete(base);
@@ -305,16 +247,20 @@
                 }
             };
 
-            const verificarAlerta10Horas = (timestamp) => {
+            const verificarAlerta10Horas = useCallback((timestamp) => {
                 if (!timestamp) return false;
                 return (now - timestamp) / 3600000 >= 10;
-            };
+            }, [now]);
 
             const imprimirSelecionados = () => {
                 if (selectedIds.size === 0) return alert("Selecione pelo menos um lote.");
                 const selecionados = lotes.filter(l => selectedIds.has(l.id));
                 setLotesParaImprimir(selecionados);
-                setTimeout(() => window.print(), 500);
+                setTimeout(() => {
+                    window.print();
+                    // Limpa a área de impressão após o print para liberar memória
+                    setTimeout(() => setLotesParaImprimir([]), 2000);
+                }, 500);
             };
 
             const mudarStatusEmMassa = async (itens, novoStatus) => {
@@ -341,6 +287,7 @@
                 }
             };
 
+            // OTIMIZAÇÃO CRÍTICA 4: Memorizando filtros pesados para parar de travar ao digitar
             const lotesFiltradosRelatorio = useMemo(() => {
                 return lotes.filter(lote => {
                     const matchTexto = lote.codigo.includes(filtroTexto.toUpperCase());
@@ -367,42 +314,25 @@
                 });
             }, [lotes, filtroTexto, filtroBase, filtroStatus, dataInicio, dataFim]);
 
-            // --- LOGICA MONITORAMENTO POR BASE ---
             const statsPorBase = useMemo(() => {
                 const dataBR = formatDateToPTBR(dataMonitoramento);
-                
-                // Filtra lotes do dia selecionado
                 const lotesDoDia = lotes.filter(l => l.dataCriacao === dataBR);
-                
-                // Agrupa por base
                 const agrupamento = {};
-                listaBases.forEach(b => agrupamento[b] = 0); // Inicializa com 0
-                
+                listaBases.forEach(b => agrupamento[b] = 0);
                 lotesDoDia.forEach(l => {
-                    if (agrupamento[l.baseSegmento] !== undefined) {
-                        agrupamento[l.baseSegmento]++;
-                    } else {
-                        // Caso existam bases antigas que não estão mais na lista padrão, opcionalmente adicionamos
-                        agrupamento[l.baseSegmento] = (agrupamento[l.baseSegmento] || 0) + 1;
-                    }
+                    if (agrupamento[l.baseSegmento] !== undefined) agrupamento[l.baseSegmento]++;
+                    else agrupamento[l.baseSegmento] = (agrupamento[l.baseSegmento] || 0) + 1;
                 });
-
-                // Converte para array e ordena por maior quantidade
                 return Object.entries(agrupamento)
                     .map(([base, count]) => ({ base, count }))
-                    .sort((a, b) => b.count - a.count); // Ordena decrescente
+                    .sort((a, b) => b.count - a.count);
             }, [lotes, dataMonitoramento, listaBases]);
 
-            // --- FUNÇÕES DE EXPORTAÇÃO (NOVO) ---
-
+            // Funções de Exportação
             const exportarCSV = () => {
                 if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
-                
                 const cabecalho = "Data;Lote;Base;Status;Periodo;Hora";
-                const linhas = lotesFiltradosRelatorio.map(l => 
-                    `${l.dataCriacao};${l.codigo};${l.baseSegmento};${l.status};${l.periodo};${l.horaCriacao}`
-                );
-                
+                const linhas = lotesFiltradosRelatorio.map(l => `${l.dataCriacao};${l.codigo};${l.baseSegmento};${l.status};${l.periodo};${l.horaCriacao}`);
                 const csvContent = "data:text/csv;charset=utf-8," + [cabecalho, ...linhas].join("\n");
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
@@ -415,115 +345,73 @@
 
             const exportarExcel = () => {
                 if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
-                
-                // Prepara dados para SheetJS
                 const dadosFormatados = lotesFiltradosRelatorio.map(l => ({
-                    "Data Criação": l.dataCriacao,
-                    "Hora": l.horaCriacao,
-                    "Código Lote": l.codigo,
-                    "Base/Segmento": l.baseSegmento,
-                    "Status": l.status,
-                    "Período": l.periodo
+                    "Data Criação": l.dataCriacao, "Hora": l.horaCriacao, "Código Lote": l.codigo,
+                    "Base/Segmento": l.baseSegmento, "Status": l.status, "Período": l.periodo
                 }));
-
                 const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório Lotes");
-                
-                // Ajusta largura das colunas
-                const wscols = [
-                    {wch:12}, {wch:10}, {wch:25}, {wch:30}, {wch:15}, {wch:10}
-                ];
-                worksheet['!cols'] = wscols;
-
+                worksheet['!cols'] = [{wch:12}, {wch:10}, {wch:25}, {wch:30}, {wch:15}, {wch:10}];
                 XLSX.writeFile(workbook, `relatorio_lotes_${getTodayISO()}.xlsx`);
             };
 
             const exportarPDF = () => {
                 if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
                 if (!window.jspdf) return alert("Biblioteca PDF não carregou.");
-
                 const doc = new window.jspdf.jsPDF();
-                
-                doc.setFontSize(16);
-                doc.text("Relatório de Sistema de Lotes", 14, 20);
-                doc.setFontSize(10);
-                doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
-                
+                doc.setFontSize(16); doc.text("Relatório de Sistema de Lotes", 14, 20);
+                doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
                 doc.text(`Filtros: ${filtroTexto || 'Nenhum'} | Base: ${filtroBase || 'Todas'} | Status: ${filtroStatus}`, 14, 32);
-
                 const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
-                const tableRows = lotesFiltradosRelatorio.map(l => [
-                    l.dataCriacao,
-                    l.horaCriacao,
-                    l.codigo,
-                    l.baseSegmento,
-                    l.status,
-                    l.periodo
-                ]);
-
+                const tableRows = lotesFiltradosRelatorio.map(l => [l.dataCriacao, l.horaCriacao, l.codigo, l.baseSegmento, l.status, l.periodo]);
                 doc.autoTable({
-                    head: [tableColumn],
-                    body: tableRows,
-                    startY: 36,
-                    theme: 'grid',
-                    styles: { fontSize: 8 },
-                    headStyles: { fillColor: [63, 81, 181] },
+                    head: [tableColumn], body: tableRows, startY: 36, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [63, 81, 181] },
                     didDrawPage: (data) => {
                         const pageSize = doc.internal.pageSize;
                         const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
                         const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
-                        
                         doc.setFontSize(8);
-                        
-                        // Summary (Left)
                         const total = lotesFiltradosRelatorio.length;
                         const impressos = lotesFiltradosRelatorio.filter(l => l.status === 'impressao').length;
                         const pendentes = lotesFiltradosRelatorio.filter(l => l.status === 'pendente').length;
                         doc.text(`Total: ${total} | Proc.: ${impressos} | Pend.: ${pendentes}`, 14, pageHeight - 10);
-
-                        // Page (Right)
-                        const pageCount = doc.internal.getNumberOfPages();
-                        doc.text(`Pág. ${pageCount}`, pageWidth - 20, pageHeight - 10);
+                        doc.text(`Pág. ${doc.internal.getNumberOfPages()}`, pageWidth - 20, pageHeight - 10);
                     }
                 });
-
                 doc.save(`relatorio_lotes_${getTodayISO()}.pdf`);
             };
 
-            // --- CONEXÃO FIREBASE ---
-
+            // CONEXÃO FIREBASE
             useEffect(() => {
                 const iniciarConexao = () => {
                     if (window.db && window.fb) {
                         setDbConnected(true);
                         
-                        // OUVINTE 1: LOTES PRINCIPAIS
-                        const qLotes = window.fb.query(window.fb.collection(window.db, "lotes"), window.fb.orderBy("timestampCriacao", "desc"));
+                        // OTIMIZAÇÃO CRÍTICA 2: A limitação de registros impede o navegador de travar com bases gigantes
+                        const qLotes = window.fb.query(
+                            window.fb.collection(window.db, "lotes"), 
+                            window.fb.orderBy("timestampCriacao", "desc"),
+                            window.fb.limit(3000) // Traz apenas os 3000 mais recentes
+                        );
+                        
                         const unsubLotes = window.fb.onSnapshot(qLotes, (snapshot) => {
                             const list = [];
                             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
                             setLotes(list);
-                        }, (err) => console.error(err));
+                        }, (err) => console.error("Erro Snapshot Lotes:", err));
 
-                        // OUVINTE 2: BASES EXTRAS CADASTRADAS PELO ADMIN
                         const qBases = window.fb.query(window.fb.collection(window.db, "segmentos_extras"));
                         const unsubBases = window.fb.onSnapshot(qBases, (snapshot) => {
                             const listExtras = [];
                             snapshot.forEach(doc => listExtras.push({ ...doc.data(), id: doc.id }));
                             setBasesExtras(listExtras);
-                            
-                            // Atualiza a lista geral unindo a lista padrão com as bases extras
                             const nomesExtras = listExtras.map(b => b.nome);
-                            // Set elimina duplicatas e sort organiza em ordem alfabetica
                             const listaUnificada = Array.from(new Set([...LISTA_PADRAO, ...nomesExtras])).sort();
                             setListaBases(listaUnificada);
-                        }, (err) => console.error("Erro ao carregar bases extras:", err));
+                        }, (err) => console.error("Erro Snapshot Bases:", err));
 
-                        return () => { 
-                            unsubLotes(); 
-                            unsubBases(); 
-                        };
+                        return () => { unsubLotes(); unsubBases(); };
                     }
                 };
                 if (window.dbReady) {
@@ -540,78 +428,50 @@
                 return () => clearInterval(interval);
             }, []);
 
-            // --- AÇÕES DO ADMIN (NOVO) ---
-            
+            // Ações Admin
             const adicionarNovaBaseAdmin = async () => {
                 const nome = novaBaseAdmin.trim().toUpperCase();
                 if (!nome) return;
-                
-                if (listaBases.includes(nome)) {
-                    playErrorSound();
-                    return alert("Esta base já existe no sistema!");
-                }
-
+                if (listaBases.includes(nome)) { playErrorSound(); return alert("Esta base já existe no sistema!"); }
                 try {
-                    await window.fb.addDoc(window.fb.collection(window.db, "segmentos_extras"), {
-                        nome: nome,
-                        dataCriacao: new Date().toISOString()
-                    });
+                    await window.fb.addDoc(window.fb.collection(window.db, "segmentos_extras"), { nome: nome, dataCriacao: new Date().toISOString() });
                     setNovaBaseAdmin('');
-                } catch (error) {
-                    console.error("Erro ao adicionar base:", error);
-                    alert("Erro ao adicionar a base.");
-                }
+                } catch (error) { console.error(error); alert("Erro ao adicionar a base."); }
             };
 
             const removerBaseExtraAdmin = async (id, nomeBase) => {
-                if(confirm(`Tem certeza que deseja remover a base "${nomeBase}"?\nIsso não apagará os lotes antigos, mas ela deixará de aparecer na lista de seleção.`)) {
-                    try {
-                        await window.fb.deleteDoc(window.fb.doc(window.db, "segmentos_extras", id));
-                    } catch (error) {
-                        console.error("Erro ao remover base:", error);
-                        alert("Erro ao remover a base.");
-                    }
+                if(confirm(`Remover a base "${nomeBase}"?\nIsso não apagará os lotes antigos.`)) {
+                    try { await window.fb.deleteDoc(window.fb.doc(window.db, "segmentos_extras", id)); } 
+                    catch (error) { console.error(error); alert("Erro ao remover."); }
                 }
             };
 
-
-            // --- AÇÕES DO USUÁRIO ---
-
+            // Ações do Usuário
             const adicionarLote = (e) => {
                 e.preventDefault();
                 const codigo = novoLote.trim().toUpperCase();
                 const base = novaBase;
                 
                 setNovoLote('');
-                if (loteInputRef.current) loteInputRef.current.focus();
+                // Garante que o foco volte, mesmo em aparelhos mais lentos
+                setTimeout(() => { if (loteInputRef.current) loteInputRef.current.focus(); }, 10);
 
                 if (!codigo) return;
-
-                if (!base || !isBaseValida(base)) {
-                    playErrorSound();
-                    return;
-                }
-
-                if ((codigo.match(/BR/g) || []).length > 1) {
-                    playErrorSound();
-                    alert(`⚠️ ERRO: Leitura duplicada detectada.`);
-                    return;
-                }
+                if (!base || !isBaseValida(base)) { playErrorSound(); return; }
+                if ((codigo.match(/BR/g) || []).length > 1) { playErrorSound(); alert(`⚠️ ERRO: Leitura duplicada detectada.`); return; }
 
                 const dataAtual = new Date();
+                // Firestore via LocalCache cuidará se estiver offline
                 window.fb.addDoc(window.fb.collection(window.db, "lotes"), {
                     codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
                     timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
                     horaCriacao: dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida (Scanner)' }]
-                });
+                    historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida' }]
+                }).catch(err => console.error("Erro salvando", err));
             };
 
             const adicionarLotesMassa = async () => {
-                if (!lotesMassa.trim() || !novaBase || !isBaseValida(novaBase)) {
-                    playErrorSound();
-                    return alert("Verifique a lista e a base.");
-                }
+                if (!lotesMassa.trim() || !novaBase || !isBaseValida(novaBase)) { playErrorSound(); return alert("Verifique a lista e a base."); }
                 const codigos = lotesMassa.split(/\r?\n/).map(c => c.trim().toUpperCase()).filter(c => c !== '');
                 const batch = window.fb.writeBatch(window.db);
                 const dataAtual = new Date();
@@ -621,28 +481,25 @@
                         codigo: cod, status: 'pendente', baseSegmento: novaBase, periodo: novoPeriodo,
                         timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
                         horaCriacao: dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                        historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Importação em massa' }]
+                        historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Em massa' }]
                     });
                 });
                 await batch.commit();
-                setLotesMassa('');
-                setModoEntrada('scanner');
-                alert("Importados.");
+                setLotesMassa(''); setModoEntrada('scanner'); alert("Importados.");
             };
 
             const mudarStatus = async (id, status) => {
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
-                const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: new Date().toLocaleString('pt-BR'), detalhe: 'Alteração de status' }];
+                const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: new Date().toLocaleString('pt-BR'), detalhe: 'Alteração' }];
                 await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { status, historico: hist });
             };
 
             const removerLote = async (id) => {
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
-                if (lote.status === 'impressao') {
-                    if (prompt("Item Processado! Senha para excluir:") !== SENHA_MESTRA) return alert("Senha incorreta.");
-                } else if (!confirm("Excluir este lote?")) return;
+                if (lote.status === 'impressao') { if (prompt("Item Processado! Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); } 
+                else if (!confirm("Excluir este lote?")) return;
                 await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
             };
 
@@ -654,7 +511,7 @@
 
             const moverLotesSelecionados = async () => {
                 if (selectedIds.size === 0 || !dataParaMover) return alert("Selecione os lotes e a data.");
-                if (prompt("Digite a senha para MOVER:") !== SENHA_MESTRA) return alert("Senha incorreta.");
+                if (prompt("Senha para MOVER:") !== SENHA_MESTRA) return alert("Senha incorreta.");
                 const novaDataBR = formatDateToPTBR(dataParaMover);
                 for (let id of selectedIds) {
                     const lote = lotes.find(l => l.id === id);
@@ -663,13 +520,12 @@
                         await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { dataCriacao: novaDataBR, historico: hist });
                     }
                 }
-                setSelectedIds(new Set());
-                alert("Lotes movidos com sucesso!");
+                setSelectedIds(new Set()); alert("Movidos com sucesso!");
             };
 
             const alterarBaseSelecionados = async () => {
                 if (selectedIds.size === 0 || !baseParaAlterar) return alert("Selecione os lotes e a nova base.");
-                if (prompt("Digite a senha para ALTERAR BASE:") !== SENHA_MESTRA) return alert("Senha incorreta.");
+                if (prompt("Senha para ALTERAR BASE:") !== SENHA_MESTRA) return alert("Senha incorreta.");
                 for (let id of selectedIds) {
                     const lote = lotes.find(l => l.id === id);
                     if (lote) {
@@ -677,75 +533,62 @@
                         await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { baseSegmento: baseParaAlterar, historico: hist });
                     }
                 }
-                setSelectedIds(new Set());
-                setBaseParaAlterar('');
-                alert("Base alterada com sucesso!");
+                setSelectedIds(new Set()); setBaseParaAlterar(''); alert("Base alterada!");
             };
 
             const prepararImpressaoDoDia = async () => {
                 if (basesSelecionadas.size === 0) return alert("Selecione ao menos uma base para imprimir.");
-                
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
-                
-                let filtrados = lotes.filter(l => 
-                    basesSelecionadas.has(l.baseSegmento) && // Filtra apenas bases selecionadas
-                    l.dataCriacao === dataBR && 
-                    (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao)
-                );
+                let filtrados = lotes.filter(l => basesSelecionadas.has(l.baseSegmento) && l.dataCriacao === dataBR && (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao));
                 
                 if (filtrados.length === 0) return alert("Nada encontrado para os filtros selecionados.");
                 
-                // ORDENAÇÃO POR BASE
                 filtrados.sort((a, b) => {
-                    const baseA = a.baseSegmento || '';
-                    const baseB = b.baseSegmento || '';
+                    const baseA = a.baseSegmento || ''; const baseB = b.baseSegmento || '';
                     return baseA.localeCompare(baseB) || a.codigo.localeCompare(b.codigo);
                 });
 
-                const pendentes = filtrados.filter(l => l.status === 'pendente');
-                if (pendentes.length > 0) {
-                    if(!confirm(`Serão processados ${pendentes.length} itens de ${basesSelecionadas.size} bases. Confirma?`)) return;
-
+                const pendentesArr = filtrados.filter(l => l.status === 'pendente');
+                if (pendentesArr.length > 0) {
+                    if(!confirm(`Serão processados ${pendentesArr.length} itens. Confirma?`)) return;
                     const batch = window.fb.writeBatch(window.db);
-                    pendentes.forEach(p => {
-                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Fechamento ${periodoImpressao} (Em Massa)` }];
+                    pendentesArr.forEach(p => {
+                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Em Massa` }];
                         batch.update(window.fb.doc(window.db, "lotes", p.id), { status: 'impressao', historico: h });
                     });
                     await batch.commit();
                 }
                 setLotesParaImprimir(filtrados);
-                setTimeout(() => window.print(), 500);
+                setTimeout(() => {
+                    window.print();
+                    // Limpa dom para evitar sobrecarga de RAM
+                    setTimeout(() => setLotesParaImprimir([]), 2000); 
+                }, 500);
             };
 
-            // --- ESTATISTICAS IMPRESSAO DIARIA (NOVO) ---
+            // OTIMIZAÇÃO: Memorizando cálculos de arrays pesados
             const statsImpressao = useMemo(() => {
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
                 const temSelecao = basesSelecionadas.size > 0;
-                
-                const filtrados = lotes.filter(l => 
-                    l.dataCriacao === dataBR &&
-                    (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao) &&
-                    (!temSelecao || basesSelecionadas.has(l.baseSegmento))
-                );
-
-                return {
-                    total: filtrados.length,
-                    impressos: filtrados.filter(l => l.status === 'impressao').length,
-                    pendentes: filtrados.filter(l => l.status === 'pendente').length
-                };
+                const filtrados = lotes.filter(l => l.dataCriacao === dataBR && (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao) && (!temSelecao || basesSelecionadas.has(l.baseSegmento)));
+                return { total: filtrados.length, impressos: filtrados.filter(l => l.status === 'impressao').length, pendentes: filtrados.filter(l => l.status === 'pendente').length };
             }, [lotes, dataImpressaoMassa, periodoImpressao, basesSelecionadas]);
 
-            // --- FILTROS DE INTERFACE ---
+            const pendentes = useMemo(() => lotes.filter(l => l.status === 'pendente'), [lotes]);
+            
+            const agrupadosPendentes = useMemo(() => {
+                return pendentes.filter(l => l.codigo.includes(pendenteBuscaLote.toUpperCase()) && l.baseSegmento.includes(pendenteBuscaBase.toUpperCase())).reduce((acc, l) => {
+                    acc[l.baseSegmento] = acc[l.baseSegmento] || [];
+                    acc[l.baseSegmento].push(l);
+                    return acc;
+                }, {});
+            }, [pendentes, pendenteBuscaLote, pendenteBuscaBase]);
 
-            const pendentes = lotes.filter(l => l.status === 'pendente');
-            const agrupadosPendentes = pendentes.filter(l => l.codigo.includes(pendenteBuscaLote.toUpperCase()) && l.baseSegmento.includes(pendenteBuscaBase.toUpperCase())).reduce((acc, l) => {
-                acc[l.baseSegmento] = acc[l.baseSegmento] || [];
-                acc[l.baseSegmento].push(l);
-                return acc;
-            }, {});
+            const processados = useMemo(() => {
+                return lotes.filter(l => l.status === 'impressao' && l.dataCriacao === formatDateToPTBR(processadosDataFiltro) && (processadoBaseFiltro ? l.baseSegmento === processadoBaseFiltro : true) && (processadoBusca ? l.codigo.includes(processadoBusca.toUpperCase()) : true));
+            }, [lotes, processadosDataFiltro, processadoBaseFiltro, processadoBusca]);
 
-            const processados = lotes.filter(l => l.status === 'impressao' && l.dataCriacao === formatDateToPTBR(processadosDataFiltro) && (processadoBaseFiltro ? l.baseSegmento === processadoBaseFiltro : true) && (processadoBusca ? l.codigo.includes(processadoBusca.toUpperCase()) : true));
-            const alertas = pendentes.filter(l => verificarAlerta10Horas(l.timestampCriacao));
+            const alertas = useMemo(() => pendentes.filter(l => verificarAlerta10Horas(l.timestampCriacao)), [pendentes, verificarAlerta10Horas]);
 
             const tabConfig = {
                 operacao: { label: 'Operação', icon: <Icons.Layers className="w-4 h-4"/> },
@@ -765,7 +608,7 @@
                                     <h1 className="text-2xl font-bold uppercase tracking-tight">Sistema de Lotes</h1>
                                     <p className="text-slate-400 text-[10px] flex items-center gap-1 uppercase">
                                         <span className={`w-2 h-2 rounded-full ${dbConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                        {dbConnected ? 'CONECTADO AO BANCO' : 'OFFLINE'}
+                                        {dbConnected ? 'CONECTADO E OTIMIZADO' : 'OFFLINE'}
                                     </p>
                                 </div>
                             </div>
@@ -818,7 +661,7 @@
                                                     {novaBase && !isBaseValida(novaBase) && (
                                                         <div className="absolute left-0 mt-1 w-full bg-red-100 text-red-700 p-2 rounded border border-red-200 text-[10px] font-bold z-10 shadow-sm">
                                                             ⚠️ BASE INEXISTENTE! <br/>
-                                                            Selecione uma base disponível no cadastro para continuar.
+                                                            Selecione uma base disponível.
                                                         </div>
                                                     )}
                                                 </div>
@@ -964,7 +807,6 @@
 
                         {activeTab === 'monitoramento' && (
                             <div className="space-y-6">
-                                {/* PAINEL DE CONTAGEM DIÁRIA */}
                                 <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
                                     <div className="flex justify-between items-center mb-6">
                                         <h2 className="text-xl font-bold flex gap-2 items-center tracking-tight text-gray-700">
@@ -972,34 +814,22 @@
                                         </h2>
                                         <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
                                             <span className="text-[10px] font-bold text-gray-500 uppercase">Data Ref:</span>
-                                            <input 
-                                                type="date" 
-                                                value={dataMonitoramento} 
-                                                onChange={e => setDataMonitoramento(e.target.value)} 
-                                                className="text-xs font-bold bg-white border rounded px-2 py-1 focus:outline-none"
-                                            />
+                                            <input type="date" value={dataMonitoramento} onChange={e => setDataMonitoramento(e.target.value)} className="text-xs font-bold bg-white border rounded px-2 py-1 focus:outline-none" />
                                         </div>
                                     </div>
                                     
                                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                         {statsPorBase.map((stat, idx) => (
                                             <div key={idx} className="bg-gradient-to-br from-white to-gray-50 border p-4 rounded-xl shadow-sm flex flex-col items-center justify-center text-center hover:shadow-md transition">
-                                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                                                    {stat.base.split('—')[0] || 'BASE'}
-                                                </div>
-                                                <div className="text-[10px] font-black text-indigo-900 uppercase leading-tight h-8 flex items-center justify-center">
-                                                    {stat.base.split('—')[1] || stat.base}
-                                                </div>
-                                                <div className="text-3xl font-black text-indigo-600 mt-2">
-                                                    {stat.count}
-                                                </div>
+                                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.base.split('—')[0] || 'BASE'}</div>
+                                                <div className="text-[10px] font-black text-indigo-900 uppercase leading-tight h-8 flex items-center justify-center">{stat.base.split('—')[1] || stat.base}</div>
+                                                <div className="text-3xl font-black text-indigo-600 mt-2">{stat.count}</div>
                                                 <div className="text-[8px] text-gray-400 mt-1 uppercase">Lotes Gerados</div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* LISTA DE ATRASOS CRÍTICOS */}
                                 <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
                                     <h2 className="text-xl font-bold mb-6 flex gap-2 items-center tracking-tight text-gray-700">
                                         <Icons.Activity className="text-red-600"/> Monitor de Atrasos (+10H)
@@ -1047,8 +877,8 @@
                                         <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="border p-2 rounded text-xs focus:outline-none"><option value="todos">Todos Status</option><option value="pendente">Pendente</option><option value="impressao">Processado</option></select>
                                     </div>
                                     <div className="flex gap-4 items-center pt-2">
-                                        <div className="bg-white border px-3 py-1 rounded text-xs font-bold text-gray-600 uppercase">Total Geral <span className="text-black ml-1 font-black">{lotes.length}</span></div>
-                                        <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded text-xs font-bold text-blue-700 uppercase tracking-tighter shadow-sm">Exibindo <span className="text-blue-900 ml-1 font-black">{lotesFiltradosRelatorio.length}</span></div>
+                                        <div className="bg-white border px-3 py-1 rounded text-xs font-bold text-gray-600 uppercase">Amostra (Máx 3000) <span className="text-black ml-1 font-black">{lotes.length}</span></div>
+                                        <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded text-xs font-bold text-blue-700 uppercase tracking-tighter shadow-sm">Filtrados <span className="text-blue-900 ml-1 font-black">{lotesFiltradosRelatorio.length}</span></div>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto">
@@ -1101,14 +931,11 @@
                             </div>
                         )}
 
-                        {/* NOVA ABA ADMINISTRATIVA */}
                         {activeTab === 'admin' && (
                             <div className="max-w-3xl mx-auto space-y-6">
                                 <div className="bg-white p-8 rounded-xl shadow border border-gray-200">
                                     <div className="flex items-center gap-3 mb-6 pb-4 border-b">
-                                        <div className="bg-indigo-100 p-3 rounded-full">
-                                            <Icons.Settings className="w-6 h-6 text-indigo-700"/>
-                                        </div>
+                                        <div className="bg-indigo-100 p-3 rounded-full"><Icons.Settings className="w-6 h-6 text-indigo-700"/></div>
                                         <div>
                                             <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Gestão de Bases e Segmentos</h2>
                                             <p className="text-xs text-gray-500 mt-1 font-medium">Adicione novas bases para expandir o sistema sem precisar alterar o código.</p>
@@ -1118,18 +945,8 @@
                                     <div className="bg-gray-50 p-6 rounded-xl border mb-8 shadow-inner">
                                         <h3 className="text-xs font-bold text-gray-600 uppercase mb-4">Adicionar Nova Base</h3>
                                         <div className="flex flex-col md:flex-row gap-3">
-                                            <input
-                                                value={novaBaseAdmin}
-                                                onChange={(e) => setNovaBaseAdmin(e.target.value)}
-                                                placeholder="Ex: 799-00 — NOVA BASE - UF"
-                                                className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 uppercase font-bold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition outline-none text-sm shadow-sm"
-                                            />
-                                            <button 
-                                                onClick={adicionarNovaBaseAdmin} 
-                                                className="bg-indigo-600 text-white font-black px-8 py-3 rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition uppercase text-xs tracking-wider"
-                                            >
-                                                Salvar Base
-                                            </button>
+                                            <input value={novaBaseAdmin} onChange={(e) => setNovaBaseAdmin(e.target.value)} placeholder="Ex: 799-00 — NOVA BASE - UF" className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 uppercase font-bold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition outline-none text-sm shadow-sm" />
+                                            <button onClick={adicionarNovaBaseAdmin} className="bg-indigo-600 text-white font-black px-8 py-3 rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition uppercase text-xs tracking-wider">Salvar Base</button>
                                         </div>
                                         <p className="text-[10px] text-gray-400 mt-2 font-medium">Siga o padrão sugerido: <span className="font-mono bg-white px-1 border rounded">CODIGO — NOME - UF</span></p>
                                     </div>
@@ -1137,26 +954,16 @@
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div>
                                             <h3 className="font-bold text-gray-700 mb-4 text-xs uppercase flex items-center justify-between border-b pb-2">
-                                                Bases Personalizadas
-                                                <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px]">{basesExtras.length}</span>
+                                                Bases Personalizadas <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px]">{basesExtras.length}</span>
                                             </h3>
-                                            
                                             {basesExtras.length === 0 ? (
-                                                <div className="text-center p-8 border-2 border-dashed rounded-xl text-gray-400 text-xs font-medium">
-                                                    Nenhuma base extra adicionada.<br/>Use o campo acima para expandir.
-                                                </div>
+                                                <div className="text-center p-8 border-2 border-dashed rounded-xl text-gray-400 text-xs font-medium">Nenhuma base extra adicionada.<br/>Use o campo acima para expandir.</div>
                                             ) : (
                                                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                                                     {basesExtras.map(b => (
                                                         <div key={b.id} className="flex justify-between items-center p-3 border rounded-lg bg-white shadow-sm hover:border-indigo-300 transition group">
                                                             <span className="font-bold text-[11px] uppercase text-gray-700">{b.nome}</span>
-                                                            <button 
-                                                                onClick={() => removerBaseExtraAdmin(b.id, b.nome)} 
-                                                                className="text-gray-300 hover:text-red-500 p-1 rounded transition bg-gray-50 hover:bg-red-50"
-                                                                title="Remover esta base"
-                                                            >
-                                                                <Icons.Trash2 className="w-4 h-4" />
-                                                            </button>
+                                                            <button onClick={() => removerBaseExtraAdmin(b.id, b.nome)} className="text-gray-300 hover:text-red-500 p-1 rounded transition bg-gray-50 hover:bg-red-50" title="Remover esta base"><Icons.Trash2 className="w-4 h-4" /></button>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1165,15 +972,12 @@
 
                                         <div>
                                             <h3 className="font-bold text-gray-700 mb-4 text-xs uppercase flex items-center justify-between border-b pb-2">
-                                                Bases Padrão (Sistema)
-                                                <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-[10px]">{LISTA_PADRAO.length}</span>
+                                                Bases Padrão (Sistema) <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-[10px]">{LISTA_PADRAO.length}</span>
                                             </h3>
                                             <div className="bg-gray-50 p-3 rounded-xl border">
                                                 <div className="grid grid-cols-1 gap-1 max-h-[300px] overflow-y-auto">
                                                     {LISTA_PADRAO.map(b => (
-                                                        <div key={b} className="text-[10px] font-bold text-gray-500 bg-white border px-3 py-2 rounded shadow-sm truncate">
-                                                            {b}
-                                                        </div>
+                                                        <div key={b} className="text-[10px] font-bold text-gray-500 bg-white border px-3 py-2 rounded shadow-sm truncate">{b}</div>
                                                     ))}
                                                 </div>
                                             </div>
@@ -1184,6 +988,7 @@
                         )}
                     </main>
 
+                    {/* AREA DE IMPRESSAO */}
                     <div id="area-impressao-etiquetas" className="hidden">
                         {Object.entries(
                             lotesParaImprimir.reduce((acc, l) => {
@@ -1191,7 +996,7 @@
                                 acc[l.baseSegmento].push(l);
                                 return acc;
                             }, {})
-                        ).map(([base, groupLotes], idx, arr) => (
+                        ).map(([base, groupLotes]) => (
                             <div key={base} className="print-group">
                                 {groupLotes.map(l => {
                                     const p = l.baseSegmento.split('—');
