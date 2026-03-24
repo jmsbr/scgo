@@ -37,7 +37,7 @@
 
         const app = initializeApp(firebaseConfig);
         
-        // OTIMIZAÇÃO CRÍTICA 1: Habilita cache offline. Evita "perda de informação" se a internet piscar
+        // OTIMIZAÇÃO CRÍTICA: Habilita cache offline. Evita "perda de informação" se a internet piscar
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
         });
@@ -145,7 +145,7 @@
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
-        // OTIMIZAÇÃO CRÍTICA 3: React.memo impede o recálculo brutal do QR Code durante a rolagem ou digitação
+        // Memorizando o componente QR para evitar travamentos na aba de impressão
         const QRCodeImage = React.memo(({ text, size = 100 }) => {
             const canvasRef = useRef(null);
             useEffect(() => {
@@ -167,13 +167,18 @@
 
             const [lotes, setLotes] = useState([]);
             const [dbConnected, setDbConnected] = useState(false);
+            const [isLoadingData, setIsLoadingData] = useState(true); // NOVO ESTADO DE CARREGAMENTO
 
             const [modoEntrada, setModoEntrada] = useState('scanner');
-            const [novoLote, setNovoLote] = useState('');
-            const [lotesMassa, setLotesMassa] = useState('');
+            
+            // OTIMIZAÇÃO CRÍTICA: Os campos de digitação de lote não usam mais 'useState'. 
+            // Agora usam 'useRef' (uncontrolled components) para evitar re-renderizar 
+            // a tela inteira a cada letra bipada. Acabou a lentidão na digitação.
+            const loteInputRef = useRef(null);
+            const lotesMassaRef = useRef(null);
+            
             const [novaBase, setNovaBase] = useState('');
             const [novoPeriodo, setNovoPeriodo] = useState('Manhã'); 
-            const loteInputRef = useRef(null);
 
             const [basesSelecionadas, setBasesSelecionadas] = useState(new Set()); 
             const [periodoImpressao, setPeriodoImpressao] = useState('Todos'); 
@@ -286,7 +291,7 @@
                 }
             };
 
-            // OTIMIZAÇÃO CRÍTICA 4: Memorizando filtros pesados para parar de travar ao digitar
+            // Memorização extrema para evitar cálculos de listas
             const lotesFiltradosRelatorio = useMemo(() => {
                 return lotes.filter(lote => {
                     const matchTexto = lote.codigo.includes(filtroTexto.toUpperCase());
@@ -327,7 +332,6 @@
                     .sort((a, b) => b.count - a.count);
             }, [lotes, dataMonitoramento, listaBases]);
 
-            // Lotes para Consulta - Memorizado
             const lotesConsulta = useMemo(() => {
                 if (!consultaTermo) return [];
                 return lotes.filter(l => l.codigo.includes(consultaTermo.toUpperCase()));
@@ -392,19 +396,25 @@
                 const iniciarConexao = () => {
                     if (window.db && window.fb) {
                         setDbConnected(true);
+                        setIsLoadingData(true);
                         
-                        // FIX: Removido o limite (limit 3000) para garantir que OS DADOS ANTIGOS sejam carregados.
-                        // A performance da renderização agora é gerenciada no frontend limitando as linhas das tabelas no DOM.
+                        // CORREÇÃO CRÍTICA: Foi adicionado um limite de 5000 registros para evitar que 
+                        // o banco de dados inteiro tente ser carregado de uma vez travando a rede e o navegador.
                         const qLotes = window.fb.query(
                             window.fb.collection(window.db, "lotes"), 
-                            window.fb.orderBy("timestampCriacao", "desc")
+                            window.fb.orderBy("timestampCriacao", "desc"),
+                            window.fb.limit(5000)
                         );
                         
                         const unsubLotes = window.fb.onSnapshot(qLotes, (snapshot) => {
                             const list = [];
                             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
                             setLotes(list);
-                        }, (err) => console.error("Erro Snapshot Lotes:", err));
+                            setIsLoadingData(false); // Remove indicador de carregamento
+                        }, (err) => {
+                            console.error("Erro Snapshot Lotes:", err);
+                            setIsLoadingData(false);
+                        });
 
                         const qBases = window.fb.query(window.fb.collection(window.db, "segmentos_extras"));
                         const unsubBases = window.fb.onSnapshot(qBases, (snapshot) => {
@@ -451,36 +461,71 @@
                 }
             };
 
-            // Ações do Usuário
+            // Ações do Usuário (OTIMIZADAS PARA PERFORMANCE E SEGURANÇA)
             const adicionarLote = (e) => {
                 e.preventDefault();
-                const codigo = novoLote.trim().toUpperCase();
+                if (!loteInputRef.current) return;
+                
+                const codigo = loteInputRef.current.value.trim().toUpperCase();
                 const base = novaBase;
                 
-                setNovoLote('');
-                // Garante que o foco volte, mesmo em aparelhos mais lentos
+                // Limpa o input no milissegundo zero para não perder o próximo bip do leitor
+                loteInputRef.current.value = '';
                 setTimeout(() => { if (loteInputRef.current) loteInputRef.current.focus(); }, 10);
 
                 if (!codigo) return;
                 if (!base || !isBaseValida(base)) { playErrorSound(); return; }
-                if ((codigo.match(/BR/g) || []).length > 1) { playErrorSound(); alert(`⚠️ ERRO: Leitura duplicada detectada.`); return; }
+                if ((codigo.match(/BR/g) || []).length > 1) { playErrorSound(); alert(`⚠️ ERRO: Leitura duplicada na mesma string detectada.`); return; }
+
+                // TRAVA DE SEGURANÇA: BLOQUEIO DE LOTE DUPLICADO
+                const loteExistente = lotes.find(l => l.codigo === codigo);
+                if (loteExistente) {
+                    playErrorSound();
+                    alert(`⚠️ ALERTA: LOTE DUPLICADO!\n\nO lote "${codigo}" JÁ EXISTE no sistema!\n\nBase: ${loteExistente.baseSegmento}\nData: ${loteExistente.dataCriacao}\nStatus Atual: ${loteExistente.status.toUpperCase()}\n\nEste item NÃO foi salvo novamente.`);
+                    return;
+                }
 
                 const dataAtual = new Date();
-                // Firestore via LocalCache cuidará se estiver offline
+                // O cache persistente lida com perdas de rede perfeitamente
                 window.fb.addDoc(window.fb.collection(window.db, "lotes"), {
                     codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
                     timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
                     horaCriacao: dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                     historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida' }]
-                }).catch(err => console.error("Erro salvando", err));
+                }).catch(err => {
+                    console.error("Erro salvando", err);
+                    alert("Erro ao salvar. Verifique sua rede.");
+                });
             };
 
             const adicionarLotesMassa = async () => {
-                if (!lotesMassa.trim() || !novaBase || !isBaseValida(novaBase)) { playErrorSound(); return alert("Verifique a lista e a base."); }
-                const codigos = lotesMassa.split(/\r?\n/).map(c => c.trim().toUpperCase()).filter(c => c !== '');
+                if (!lotesMassaRef.current) return;
+                const textoPlano = lotesMassaRef.current.value;
+
+                if (!textoPlano.trim() || !novaBase || !isBaseValida(novaBase)) { 
+                    playErrorSound(); 
+                    return alert("Verifique a lista de lotes e a base selecionada."); 
+                }
+                
+                // Separa e remove vazios
+                let codigos = textoPlano.split(/\r?\n/).map(c => c.trim().toUpperCase()).filter(c => c !== '');
+                
+                // Remove cópias exatas que a pessoa tenha colado na mesma caixa
+                codigos = [...new Set(codigos)];
+
+                // TRAVA DE SEGURANÇA: Filtra os códigos, pegando APENAS os que não existem no banco
+                const codigosNovos = codigos.filter(cod => !lotes.some(l => l.codigo === cod));
+                const qtdIgnorados = codigos.length - codigosNovos.length;
+
+                if (codigosNovos.length === 0) {
+                    playErrorSound();
+                    alert(`⚠️ ALERTA!\nTodos os ${qtdIgnorados} lotes inseridos já existiam no sistema.\nNenhum lote foi duplicado.`);
+                    return;
+                }
+
                 const batch = window.fb.writeBatch(window.db);
                 const dataAtual = new Date();
-                codigos.forEach(cod => {
+                codigosNovos.forEach(cod => {
                     const ref = window.fb.doc(window.fb.collection(window.db, "lotes"));
                     batch.set(ref, {
                         codigo: cod, status: 'pendente', baseSegmento: novaBase, periodo: novoPeriodo,
@@ -489,8 +534,16 @@
                         historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Em massa' }]
                     });
                 });
-                await batch.commit();
-                setLotesMassa(''); setModoEntrada('scanner'); alert("Importados.");
+
+                try {
+                    await batch.commit();
+                    lotesMassaRef.current.value = ''; 
+                    setModoEntrada('scanner'); 
+                    alert(`✅ SUCESSO!\n\n${codigosNovos.length} lotes foram inseridos.\n${qtdIgnorados > 0 ? `⚠️ ${qtdIgnorados} lotes foram IGNORADOS por já existirem no sistema.` : ''}`);
+                } catch (error) {
+                    console.error("Erro lote massa:", error);
+                    alert("Falha de rede ao salvar os lotes.");
+                }
             };
 
             const mudarStatus = async (id, status) => {
@@ -571,7 +624,6 @@
                 }, 500);
             };
 
-            // OTIMIZAÇÃO: Memorizando cálculos de arrays pesados
             const statsImpressao = useMemo(() => {
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
                 const temSelecao = basesSelecionadas.size > 0;
@@ -612,8 +664,8 @@
                                 <div>
                                     <h1 className="text-2xl font-bold uppercase tracking-tight">Sistema de Lotes</h1>
                                     <p className="text-slate-400 text-[10px] flex items-center gap-1 uppercase">
-                                        <span className={`w-2 h-2 rounded-full ${dbConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                        {dbConnected ? 'CONECTADO E OTIMIZADO' : 'OFFLINE'}
+                                        <span className={`w-2 h-2 rounded-full ${dbConnected ? (isLoadingData ? 'bg-yellow-400 animate-pulse' : 'bg-green-500') : 'bg-red-500'}`}></span>
+                                        {dbConnected ? (isLoadingData ? 'SINCRONIZANDO DADOS...' : 'SISTEMA ONLINE E OTIMIZADO') : 'OFFLINE'}
                                     </p>
                                 </div>
                             </div>
@@ -640,6 +692,14 @@
                     </div>
 
                     <main className="max-w-7xl mx-auto p-4 md:p-6 no-print">
+                        {/* AVISO DE CARREGAMENTO */}
+                        {isLoadingData && lotes.length === 0 && (
+                            <div className="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-xl flex items-center justify-center gap-3 text-yellow-800 font-bold shadow-sm">
+                                <div className="w-5 h-5 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                                Baixando informações do banco de dados. Se a internet estiver lenta, aguarde...
+                            </div>
+                        )}
+
                         {activeTab === 'operacao' && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -679,12 +739,12 @@
                                             </div>
                                             {modoEntrada === 'scanner' ? (
                                                 <form onSubmit={adicionarLote} className="flex gap-2">
-                                                    <input ref={loteInputRef} value={novoLote} onChange={e=>setNovoLote(e.target.value)} className="flex-1 border rounded-lg px-4 py-3 font-mono font-bold bg-yellow-50 text-xl focus:ring-4 focus:ring-yellow-100" placeholder="BIPAR LOTE..." autoFocus />
+                                                    <input ref={loteInputRef} className="flex-1 border rounded-lg px-4 py-3 font-mono font-bold bg-yellow-50 text-xl focus:ring-4 focus:ring-yellow-100" placeholder="BIPAR LOTE AQUI..." autoFocus />
                                                     <button type="submit" disabled={novaBase && !isBaseValida(novaBase)} className={`font-bold px-6 rounded-lg transition ${novaBase && !isBaseValida(novaBase) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}>SALVAR</button>
                                                 </form>
                                             ) : (
                                                 <div className="space-y-2">
-                                                    <textarea value={lotesMassa} onChange={e=>setLotesMassa(e.target.value)} className="w-full border rounded-lg p-3 font-mono text-xs h-32 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cole os códigos (1 por linha)..."></textarea>
+                                                    <textarea ref={lotesMassaRef} className="w-full border rounded-lg p-3 font-mono text-xs h-32 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cole os códigos (1 por linha)..."></textarea>
                                                     <button onClick={adicionarLotesMassa} disabled={novaBase && !isBaseValida(novaBase)} className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg disabled:bg-gray-400">PROCESSAR TUDO</button>
                                                 </div>
                                             )}
@@ -882,14 +942,14 @@
                                         <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="border p-2 rounded text-xs focus:outline-none"><option value="todos">Todos Status</option><option value="pendente">Pendente</option><option value="impressao">Processado</option></select>
                                     </div>
                                     <div className="flex gap-4 items-center pt-2">
-                                        <div className="bg-white border px-3 py-1 rounded text-xs font-bold text-gray-600 uppercase">Total no Banco <span className="text-black ml-1 font-black">{lotes.length}</span></div>
+                                        <div className="bg-white border px-3 py-1 rounded text-xs font-bold text-gray-600 uppercase">Total Exibido <span className="text-black ml-1 font-black">{lotes.length}</span></div>
                                         <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded text-xs font-bold text-blue-700 uppercase tracking-tighter shadow-sm">Filtrados <span className="text-blue-900 ml-1 font-black">{lotesFiltradosRelatorio.length}</span></div>
                                     </div>
                                 </div>
                                 
                                 {lotesFiltradosRelatorio.length > 500 && (
                                     <div className="bg-yellow-50 text-yellow-800 px-4 py-2 border-b text-center text-xs font-bold">
-                                        ⚠️ Exibindo apenas os 500 registros mais recentes na tabela para não travar o sistema. Para ver todos os {lotesFiltradosRelatorio.length} registros, use os filtros acima ou faça a exportação (Excel/PDF).
+                                        ⚠️ Exibindo apenas os 500 registros mais recentes na tabela para não travar o navegador. Para ver todos os {lotesFiltradosRelatorio.length} registros, use os filtros acima ou faça a exportação (Excel/PDF).
                                     </div>
                                 )}
 
