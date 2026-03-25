@@ -167,13 +167,11 @@
 
             const [lotes, setLotes] = useState([]);
             const [dbConnected, setDbConnected] = useState(false);
-            const [isLoadingData, setIsLoadingData] = useState(true); // NOVO ESTADO DE CARREGAMENTO
+            const [isLoadingData, setIsLoadingData] = useState(true);
 
             const [modoEntrada, setModoEntrada] = useState('scanner');
             
-            // OTIMIZAÇÃO CRÍTICA: Os campos de digitação de lote não usam mais 'useState'. 
-            // Agora usam 'useRef' (uncontrolled components) para evitar re-renderizar 
-            // a tela inteira a cada letra bipada. Acabou a lentidão na digitação.
+            // Uncontrolled components para performance de digitação
             const loteInputRef = useRef(null);
             const lotesMassaRef = useRef(null);
             
@@ -262,7 +260,6 @@
                 setLotesParaImprimir(selecionados);
                 setTimeout(() => {
                     window.print();
-                    // Limpa a área de impressão após o print para liberar memória
                     setTimeout(() => setLotesParaImprimir([]), 2000);
                 }, 500);
             };
@@ -273,6 +270,15 @@
 
                 const batch = window.fb.writeBatch(window.db);
                 const dataHora = new Date().toLocaleString('pt-BR');
+
+                // Atualização Otimista
+                const itemIds = new Set(itens.map(i => i.id));
+                setLotes(prev => prev.map(lote => {
+                    if (itemIds.has(lote.id)) {
+                        return { ...lote, status: novoStatus, historico: [...(lote.historico || []), { status: novoStatus.toUpperCase(), data: dataHora, detalhe: 'Ação em massa' }] };
+                    }
+                    return lote;
+                }));
 
                 itens.forEach(item => {
                     const docRef = window.fb.doc(window.db, "lotes", item.id);
@@ -291,14 +297,17 @@
                 }
             };
 
-            // Memorização extrema para evitar cálculos de listas
+            // OTIMIZAÇÃO CRÍTICA: Laços de filtro sem criação de "new Date()" desnecessária
             const lotesFiltradosRelatorio = useMemo(() => {
+                const upperFiltroTexto = filtroTexto.toUpperCase();
+                const hasDateFilter = Boolean(dataInicio || dataFim); // Só processa data se o usuário preencher
+
                 return lotes.filter(lote => {
-                    const matchTexto = lote.codigo.includes(filtroTexto.toUpperCase());
-                    const matchBase = filtroBase === "" || lote.baseSegmento === filtroBase;
-                    const matchStatus = filtroStatus !== 'todos' ? lote.status === filtroStatus : true;
-                    let matchData = true;
-                    if (dataInicio || dataFim) {
+                    if (filtroStatus !== 'todos' && lote.status !== filtroStatus) return false;
+                    if (filtroBase !== "" && lote.baseSegmento !== filtroBase) return false;
+                    if (upperFiltroTexto && !lote.codigo.includes(upperFiltroTexto)) return false;
+
+                    if (hasDateFilter) {
                         let loteISO = "";
                         if (lote.timestampCriacao) {
                             const d = new Date(lote.timestampCriacao);
@@ -307,14 +316,12 @@
                             const parts = lote.dataCriacao.split('/');
                             if (parts.length === 3) loteISO = `${parts[2]}-${parts[1]}-${parts[0]}`;
                         }
-                        if (loteISO) {
-                            if (dataInicio && loteISO < dataInicio) matchData = false;
-                            if (dataFim && loteISO > dataFim) matchData = false;
-                        } else {
-                            matchData = false;
-                        }
+                        
+                        if (!loteISO) return false;
+                        if (dataInicio && loteISO < dataInicio) return false;
+                        if (dataFim && loteISO > dataFim) return false;
                     }
-                    return matchTexto && matchBase && matchStatus && matchData;
+                    return true;
                 });
             }, [lotes, filtroTexto, filtroBase, filtroStatus, dataInicio, dataFim]);
 
@@ -334,7 +341,8 @@
 
             const lotesConsulta = useMemo(() => {
                 if (!consultaTermo) return [];
-                return lotes.filter(l => l.codigo.includes(consultaTermo.toUpperCase()));
+                const term = consultaTermo.toUpperCase();
+                return lotes.filter(l => l.codigo.includes(term));
             }, [lotes, consultaTermo]);
 
             // Funções de Exportação
@@ -398,8 +406,6 @@
                         setDbConnected(true);
                         setIsLoadingData(true);
                         
-                        // CORREÇÃO CRÍTICA: Foi adicionado um limite de 5000 registros para evitar que 
-                        // o banco de dados inteiro tente ser carregado de uma vez travando a rede e o navegador.
                         const qLotes = window.fb.query(
                             window.fb.collection(window.db, "lotes"), 
                             window.fb.orderBy("timestampCriacao", "desc"),
@@ -410,7 +416,7 @@
                             const list = [];
                             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
                             setLotes(list);
-                            setIsLoadingData(false); // Remove indicador de carregamento
+                            setIsLoadingData(false);
                         }, (err) => {
                             console.error("Erro Snapshot Lotes:", err);
                             setIsLoadingData(false);
@@ -461,7 +467,6 @@
                 }
             };
 
-            // Ações do Usuário (OTIMIZADAS PARA PERFORMANCE E SEGURANÇA)
             const adicionarLote = (e) => {
                 e.preventDefault();
                 if (!loteInputRef.current) return;
@@ -469,7 +474,6 @@
                 const codigo = loteInputRef.current.value.trim().toUpperCase();
                 const base = novaBase;
                 
-                // Limpa o input no milissegundo zero para não perder o próximo bip do leitor
                 loteInputRef.current.value = '';
                 setTimeout(() => { if (loteInputRef.current) loteInputRef.current.focus(); }, 10);
 
@@ -477,16 +481,24 @@
                 if (!base || !isBaseValida(base)) { playErrorSound(); return; }
                 if ((codigo.match(/BR/g) || []).length > 1) { playErrorSound(); alert(`⚠️ ERRO: Leitura duplicada na mesma string detectada.`); return; }
 
-                // TRAVA DE SEGURANÇA: BLOQUEIO DE LOTE DUPLICADO
                 const loteExistente = lotes.find(l => l.codigo === codigo);
                 if (loteExistente) {
                     playErrorSound();
-                    alert(`⚠️ ALERTA: LOTE DUPLICADO!\n\nO lote "${codigo}" JÁ EXISTE no sistema!\n\nBase: ${loteExistente.baseSegmento}\nData: ${loteExistente.dataCriacao}\nStatus Atual: ${loteExistente.status.toUpperCase()}\n\nEste item NÃO foi salvo novamente.`);
+                    alert(`⚠️ ALERTA: LOTE DUPLICADO!\n\nO lote "${codigo}" JÁ EXISTE no sistema!\n\nBase: ${loteExistente.baseSegmento}\nData: ${loteExistente.dataCriacao}\nStatus Atual: ${loteExistente.status.toUpperCase()}`);
                     return;
                 }
 
                 const dataAtual = new Date();
-                // O cache persistente lida com perdas de rede perfeitamente
+                
+                // Optimistic UI na adição também torna o scanner incrivelmente ágil
+                const novoLoteTemp = {
+                    id: 'temp-' + dataAtual.getTime(), codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
+                    timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
+                    horaCriacao: dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida' }]
+                };
+                setLotes(prev => [novoLoteTemp, ...prev]);
+
                 window.fb.addDoc(window.fb.collection(window.db, "lotes"), {
                     codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
                     timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
@@ -507,13 +519,9 @@
                     return alert("Verifique a lista de lotes e a base selecionada."); 
                 }
                 
-                // Separa e remove vazios
                 let codigos = textoPlano.split(/\r?\n/).map(c => c.trim().toUpperCase()).filter(c => c !== '');
-                
-                // Remove cópias exatas que a pessoa tenha colado na mesma caixa
                 codigos = [...new Set(codigos)];
 
-                // TRAVA DE SEGURANÇA: Filtra os códigos, pegando APENAS os que não existem no banco
                 const codigosNovos = codigos.filter(cod => !lotes.some(l => l.codigo === cod));
                 const qtdIgnorados = codigos.length - codigosNovos.length;
 
@@ -550,15 +558,32 @@
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
                 const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: new Date().toLocaleString('pt-BR'), detalhe: 'Alteração' }];
+                
+                // Optimistic UI
+                setLotes(prev => prev.map(l => l.id === id ? { ...l, status, historico: hist } : l));
                 await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { status, historico: hist });
             };
 
+            // OTIMIZAÇÃO CRÍTICA: Remoção otimista impede travamento em cliques rápidos (Fast Delete)
             const removerLote = async (id) => {
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
-                if (lote.status === 'impressao') { if (prompt("Item Processado! Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); } 
-                else if (!confirm("Excluir este lote?")) return;
-                await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
+                
+                if (lote.status === 'impressao') { 
+                    if (prompt("Item Processado! Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); 
+                } else if (!confirm("Excluir este lote?")) {
+                    return;
+                }
+                
+                // UI Otimista: Tira o card da tela imediatamente, permitindo que você clique no próximo sem esperar.
+                setLotes(prev => prev.filter(l => l.id !== id));
+
+                try {
+                    await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
+                } catch (error) {
+                    console.error("Erro ao deletar:", error);
+                    alert("Falha na rede. O item não pôde ser excluído.");
+                }
             };
 
             const toggleSelection = (id) => {
@@ -619,7 +644,6 @@
                 setLotesParaImprimir(filtrados);
                 setTimeout(() => {
                     window.print();
-                    // Limpa dom para evitar sobrecarga de RAM
                     setTimeout(() => setLotesParaImprimir([]), 2000); 
                 }, 500);
             };
@@ -633,16 +657,29 @@
 
             const pendentes = useMemo(() => lotes.filter(l => l.status === 'pendente'), [lotes]);
             
+            // OTIMIZAÇÃO CRÍTICA: Sem strings e alocação na repetição
             const agrupadosPendentes = useMemo(() => {
-                return pendentes.filter(l => l.codigo.includes(pendenteBuscaLote.toUpperCase()) && l.baseSegmento.includes(pendenteBuscaBase.toUpperCase())).reduce((acc, l) => {
+                const buscaLote = pendenteBuscaLote.toUpperCase();
+                const buscaBase = pendenteBuscaBase.toUpperCase();
+                
+                return pendentes.filter(l => l.codigo.includes(buscaLote) && l.baseSegmento.includes(buscaBase)).reduce((acc, l) => {
                     acc[l.baseSegmento] = acc[l.baseSegmento] || [];
                     acc[l.baseSegmento].push(l);
                     return acc;
                 }, {});
             }, [pendentes, pendenteBuscaLote, pendenteBuscaBase]);
 
+            // OTIMIZAÇÃO CRÍTICA: Sem strings sendo alocadas repetidas vezes
             const processados = useMemo(() => {
-                return lotes.filter(l => l.status === 'impressao' && l.dataCriacao === formatDateToPTBR(processadosDataFiltro) && (processadoBaseFiltro ? l.baseSegmento === processadoBaseFiltro : true) && (processadoBusca ? l.codigo.includes(processadoBusca.toUpperCase()) : true));
+                const dataFiltro = formatDateToPTBR(processadosDataFiltro);
+                const buscaTermo = processadoBusca.toUpperCase();
+                
+                return lotes.filter(l => 
+                    l.status === 'impressao' && 
+                    l.dataCriacao === dataFiltro && 
+                    (processadoBaseFiltro ? l.baseSegmento === processadoBaseFiltro : true) && 
+                    (buscaTermo ? l.codigo.includes(buscaTermo) : true)
+                );
             }, [lotes, processadosDataFiltro, processadoBaseFiltro, processadoBusca]);
 
             const alertas = useMemo(() => pendentes.filter(l => verificarAlerta10Horas(l.timestampCriacao)), [pendentes, verificarAlerta10Horas]);
