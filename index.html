@@ -264,8 +264,6 @@
                 }, 500);
             };
 
-            // OTIMIZAÇÃO CRÍTICA: Sem "falsas atualizações" (UI Otimista Manual)
-            // O Firebase já faz isso sozinho com extrema rapidez graças ao cache local.
             const mudarStatusEmMassa = async (itens, novoStatus) => {
                 if (!dbConnected) return;
                 if (!confirm(`Confirma mover TODOS os ${itens.length} itens deste segmento para Processados?`)) return;
@@ -290,10 +288,9 @@
                 }
             };
 
-            // OTIMIZAÇÃO CRÍTICA: Laços de filtro sem criação de "new Date()" desnecessária
             const lotesFiltradosRelatorio = useMemo(() => {
                 const upperFiltroTexto = filtroTexto.toUpperCase();
-                const hasDateFilter = Boolean(dataInicio || dataFim); // Só processa data se o usuário preencher
+                const hasDateFilter = Boolean(dataInicio || dataFim); 
 
                 return lotes.filter(lote => {
                     if (filtroStatus !== 'todos' && lote.status !== filtroStatus) return false;
@@ -338,7 +335,6 @@
                 return lotes.filter(l => l.codigo.includes(term));
             }, [lotes, consultaTermo]);
 
-            // Funções de Exportação
             const exportarCSV = () => {
                 if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
                 const cabecalho = "Data;Lote;Base;Status;Periodo;Hora";
@@ -392,7 +388,6 @@
                 doc.save(`relatorio_lotes_${getTodayISO()}.pdf`);
             };
 
-            // CONEXÃO FIREBASE
             useEffect(() => {
                 const iniciarConexao = () => {
                     if (window.db && window.fb) {
@@ -442,7 +437,6 @@
                 return () => clearInterval(interval);
             }, []);
 
-            // Ações Admin
             const adicionarNovaBaseAdmin = async () => {
                 const nome = novaBaseAdmin.trim().toUpperCase();
                 if (!nome) return;
@@ -483,7 +477,6 @@
 
                 const dataAtual = new Date();
                 
-                // OTIMIZAÇÃO CRÍTICA: Sem "falsas atualizações" manuais para evitar conflito de IDs
                 window.fb.addDoc(window.fb.collection(window.db, "lotes"), {
                     codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
                     timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
@@ -544,21 +537,16 @@
                 if (!lote) return;
                 const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: new Date().toLocaleString('pt-BR'), detalhe: 'Alteração' }];
                 
-                // OTIMIZAÇÃO CRÍTICA: Sem "falsas atualizações"
                 await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { status, historico: hist });
             };
 
-            // OTIMIZAÇÃO CRÍTICA: Deleção Rápida e Confiável
             const removerLote = async (id) => {
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
                 
-                // Proteção de exclusão apenas para itens Processados
                 if (lote.status === 'impressao') { 
                     if (prompt("Atenção! Item já Processado. Digite a Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); 
                 } 
-                // NOTA: Removi a mensagem de confirmação para itens "pendentes" 
-                // Isso permite clicar na lixeira extremamente rápido (exclusão turbo) sem bloquear o navegador.
                 
                 try {
                     await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
@@ -639,7 +627,6 @@
 
             const pendentes = useMemo(() => lotes.filter(l => l.status === 'pendente'), [lotes]);
             
-            // OTIMIZAÇÃO CRÍTICA: Sem strings e alocação na repetição
             const agrupadosPendentes = useMemo(() => {
                 const buscaLote = pendenteBuscaLote.toUpperCase();
                 const buscaBase = pendenteBuscaBase.toUpperCase();
@@ -651,7 +638,6 @@
                 }, {});
             }, [pendentes, pendenteBuscaLote, pendenteBuscaBase]);
 
-            // OTIMIZAÇÃO CRÍTICA: Sem strings sendo alocadas repetidas vezes
             const processados = useMemo(() => {
                 const dataFiltro = formatDateToPTBR(processadosDataFiltro);
                 const buscaTermo = processadoBusca.toUpperCase();
@@ -711,7 +697,6 @@
                     </div>
 
                     <main className="max-w-7xl mx-auto p-4 md:p-6 no-print">
-                        {/* AVISO DE CARREGAMENTO */}
                         {isLoadingData && lotes.length === 0 && (
                             <div className="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-xl flex items-center justify-center gap-3 text-yellow-800 font-bold shadow-sm">
                                 <div className="w-5 h-5 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
@@ -820,19 +805,30 @@
                                             <h3 className="font-bold text-orange-800 uppercase text-xs flex gap-2 items-center"><Icons.Clock className="w-4 h-4"/> Pendentes</h3>
                                             <span className="bg-orange-200 text-orange-900 px-2 rounded-full font-bold text-[10px]">{pendentes.length}</span>
                                         </div>
+                                        {/* OTIMIZAÇÃO: LIMITANDO A RENDERIZAÇÃO DO DOM AQUI PARA EVITAR LENTIDÃO */}
                                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                             {Object.entries(agrupadosPendentes).map(([base, list]) => (
                                                 <div key={base} className="border rounded-lg overflow-hidden shadow-sm">
-                                                    <div className="bg-gray-100 p-2 text-[10px] font-bold flex justify-between uppercase">{base} <button onClick={()=>mudarStatusEmMassa(list,'impressao')} className="text-green-700 hover:underline">USAR GRUPO</button></div>
-                                                    <div className="divide-y">{list.map(l=>(
-                                                        <div key={l.id} className={`p-3 flex justify-between items-center ${verificarAlerta10Horas(l.timestampCriacao)?'bg-red-50':''}`}>
-                                                            <div className="font-mono font-bold uppercase">{l.codigo}</div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={()=>removerLote(l.id)} className="text-red-300 hover:text-red-600"><Icons.Trash2 className="w-4 h-4"/></button>
-                                                                <button onClick={()=>mudarStatus(l.id,'impressao')} className="text-[10px] border px-2 py-1 rounded font-bold bg-white hover:bg-green-50 shadow-sm uppercase">Usar</button>
+                                                    <div className="bg-gray-100 p-2 text-[10px] font-bold flex justify-between items-center uppercase">
+                                                        <span>{base} ({list.length})</span> 
+                                                        <button onClick={()=>mudarStatusEmMassa(list,'impressao')} className="text-green-700 hover:underline bg-green-100 px-2 py-0.5 rounded">USAR GRUPO</button>
+                                                    </div>
+                                                    <div className="divide-y">
+                                                        {list.length > 100 && (
+                                                            <div className="p-2 text-center text-[10px] bg-orange-100 text-orange-800 font-bold">
+                                                                ⚠️ Exibindo 100 mais recentes de {list.length} nesta base.
                                                             </div>
-                                                        </div>
-                                                    ))}</div>
+                                                        )}
+                                                        {list.slice(0, 100).map(l=>(
+                                                            <div key={l.id} className={`p-3 flex justify-between items-center ${verificarAlerta10Horas(l.timestampCriacao)?'bg-red-50':''}`}>
+                                                                <div className="font-mono font-bold uppercase">{l.codigo}</div>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={()=>removerLote(l.id)} className="text-red-300 hover:text-red-600"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                                    <button onClick={()=>mudarStatus(l.id,'impressao')} className="text-[10px] border px-2 py-1 rounded font-bold bg-white hover:bg-green-50 shadow-sm uppercase">Usar</button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -852,8 +848,14 @@
                                                 <select value={processadoBaseFiltro} onChange={e=>setProcessadoBaseFiltro(e.target.value)} className="text-[10px] border rounded p-1 focus:outline-none"><option value="">Todas Bases</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                                            {processados.map(l=>(
+                                        {/* OTIMIZAÇÃO: LIMITANDO A RENDERIZAÇÃO DO DOM AQUI PARA EVITAR LENTIDÃO EXTREMA */}
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-2 relative">
+                                            {processados.length > 150 && (
+                                                <div className="sticky top-0 z-10 text-center text-blue-800 bg-blue-100 p-2 rounded text-[10px] font-bold shadow-sm mb-2 opacity-90">
+                                                    ⚠️ Modo Rápido: Exibindo os 150 mais recentes de {processados.length}.<br/>Use a pesquisa acima para encontrar antigos.
+                                                </div>
+                                            )}
+                                            {processados.slice(0, 150).map(l=>(
                                                 <div key={l.id} className={`border p-3 rounded-lg flex justify-between items-center transition ${selectedIds.has(l.id)?'bg-blue-100 border-blue-400':'bg-white'}`}>
                                                     <div className="flex gap-3 items-center">
                                                         <input type="checkbox" checked={selectedIds.has(l.id)} onChange={()=>toggleSelection(l.id)} className="w-5 h-5 cursor-pointer"/>
@@ -866,7 +868,7 @@
                                                 </div>
                                             ))}
                                             {selectedIds.size > 0 && (
-                                                <div className="sticky bottom-0 bg-white p-3 border-t shadow-2xl space-y-3">
+                                                <div className="sticky bottom-0 bg-white p-3 border-t shadow-2xl space-y-3 z-20">
                                                     <div className="flex gap-2">
                                                         <input type="date" value={dataParaMover} onChange={e=>setDataParaMover(e.target.value)} className="flex-1 text-[10px] border rounded p-1 focus:outline-none" />
                                                         <button onClick={moverLotesSelecionados} className="bg-orange-600 text-white font-bold px-3 py-1 rounded text-[10px] uppercase shadow-sm">Mover Data</button>
@@ -966,9 +968,9 @@
                                     </div>
                                 </div>
                                 
-                                {lotesFiltradosRelatorio.length > 500 && (
+                                {lotesFiltradosRelatorio.length > 200 && (
                                     <div className="bg-yellow-50 text-yellow-800 px-4 py-2 border-b text-center text-xs font-bold">
-                                        ⚠️ Exibindo apenas os 500 registros mais recentes na tabela para não travar o navegador. Para ver todos os {lotesFiltradosRelatorio.length} registros, use os filtros acima ou faça a exportação (Excel/PDF).
+                                        ⚠️ Modo Rápido: Exibindo apenas os 200 registros mais recentes. Para ver todos os {lotesFiltradosRelatorio.length} registros, faça a exportação (Excel/PDF) ou pesquise.
                                     </div>
                                 )}
 
@@ -978,8 +980,7 @@
                                             <tr><th className="p-3">Data</th><th className="p-3">Lote</th><th className="p-3">Base</th><th className="p-3">Status</th><th className="p-3">Período</th><th className="p-3 text-right">Opções</th></tr>
                                         </thead>
                                         <tbody className="divide-y">
-                                            {/* O segredo da performance está no SLICE(0, 500) para o DOM não travar. As exportações usam o array completo */}
-                                            {lotesFiltradosRelatorio.slice(0, 500).map(l=>(
+                                            {lotesFiltradosRelatorio.slice(0, 200).map(l=>(
                                                 <tr key={l.id} className="hover:bg-gray-50">
                                                     <td className="p-3">{l.dataCriacao}</td>
                                                     <td className="p-3 font-bold font-mono text-xs uppercase">{l.codigo}</td>
