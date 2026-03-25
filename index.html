@@ -264,21 +264,14 @@
                 }, 500);
             };
 
+            // OTIMIZAÇÃO CRÍTICA: Sem "falsas atualizações" (UI Otimista Manual)
+            // O Firebase já faz isso sozinho com extrema rapidez graças ao cache local.
             const mudarStatusEmMassa = async (itens, novoStatus) => {
                 if (!dbConnected) return;
                 if (!confirm(`Confirma mover TODOS os ${itens.length} itens deste segmento para Processados?`)) return;
 
                 const batch = window.fb.writeBatch(window.db);
                 const dataHora = new Date().toLocaleString('pt-BR');
-
-                // Atualização Otimista
-                const itemIds = new Set(itens.map(i => i.id));
-                setLotes(prev => prev.map(lote => {
-                    if (itemIds.has(lote.id)) {
-                        return { ...lote, status: novoStatus, historico: [...(lote.historico || []), { status: novoStatus.toUpperCase(), data: dataHora, detalhe: 'Ação em massa' }] };
-                    }
-                    return lote;
-                }));
 
                 itens.forEach(item => {
                     const docRef = window.fb.doc(window.db, "lotes", item.id);
@@ -490,15 +483,7 @@
 
                 const dataAtual = new Date();
                 
-                // Optimistic UI na adição também torna o scanner incrivelmente ágil
-                const novoLoteTemp = {
-                    id: 'temp-' + dataAtual.getTime(), codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
-                    timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
-                    horaCriacao: dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida' }]
-                };
-                setLotes(prev => [novoLoteTemp, ...prev]);
-
+                // OTIMIZAÇÃO CRÍTICA: Sem "falsas atualizações" manuais para evitar conflito de IDs
                 window.fb.addDoc(window.fb.collection(window.db, "lotes"), {
                     codigo, status: 'pendente', baseSegmento: base, periodo: novoPeriodo,
                     timestampCriacao: dataAtual.getTime(), dataCriacao: dataAtual.toLocaleDateString('pt-BR'),
@@ -559,25 +544,22 @@
                 if (!lote) return;
                 const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: new Date().toLocaleString('pt-BR'), detalhe: 'Alteração' }];
                 
-                // Optimistic UI
-                setLotes(prev => prev.map(l => l.id === id ? { ...l, status, historico: hist } : l));
+                // OTIMIZAÇÃO CRÍTICA: Sem "falsas atualizações"
                 await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { status, historico: hist });
             };
 
-            // OTIMIZAÇÃO CRÍTICA: Remoção otimista impede travamento em cliques rápidos (Fast Delete)
+            // OTIMIZAÇÃO CRÍTICA: Deleção Rápida e Confiável
             const removerLote = async (id) => {
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
                 
+                // Proteção de exclusão apenas para itens Processados
                 if (lote.status === 'impressao') { 
-                    if (prompt("Item Processado! Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); 
-                } else if (!confirm("Excluir este lote?")) {
-                    return;
-                }
+                    if (prompt("Atenção! Item já Processado. Digite a Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); 
+                } 
+                // NOTA: Removi a mensagem de confirmação para itens "pendentes" 
+                // Isso permite clicar na lixeira extremamente rápido (exclusão turbo) sem bloquear o navegador.
                 
-                // UI Otimista: Tira o card da tela imediatamente, permitindo que você clique no próximo sem esperar.
-                setLotes(prev => prev.filter(l => l.id !== id));
-
                 try {
                     await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
                 } catch (error) {
