@@ -169,9 +169,11 @@
             const [dbConnected, setDbConnected] = useState(false);
             const [isLoadingData, setIsLoadingData] = useState(true);
 
+            // OTIMIZAÇÃO CRÍTICA EXCLUSÃO: Ocultação Otimista Instantânea
+            const [deletingIds, setDeletingIds] = useState(new Set());
+
             const [modoEntrada, setModoEntrada] = useState('scanner');
             
-            // Uncontrolled components para performance de digitação
             const loteInputRef = useRef(null);
             const lotesMassaRef = useRef(null);
             
@@ -215,6 +217,23 @@
                 }
                 lastBaseStatusRef.current = !novaBase || isValid;
             }, [novaBase, isBaseValida]);
+
+            // LIMPEZA DA MEMÓRIA: Remove IDs da lista de deletados quando eles sumirem definitivamente do banco
+            useEffect(() => {
+                if (deletingIds.size > 0) {
+                    setDeletingIds(prev => {
+                        const next = new Set(prev);
+                        let changed = false;
+                        next.forEach(id => {
+                            if (!lotes.some(l => l.id === id)) {
+                                next.delete(id);
+                                changed = true;
+                            }
+                        });
+                        return changed ? next : prev;
+                    });
+                }
+            }, [lotes]);
 
             const handleTabClick = (key) => {
                 if (key === 'admin') {
@@ -293,6 +312,7 @@
                 const hasDateFilter = Boolean(dataInicio || dataFim); 
 
                 return lotes.filter(lote => {
+                    if (deletingIds.has(lote.id)) return false; // Esconde instataneamente os itens apagados
                     if (filtroStatus !== 'todos' && lote.status !== filtroStatus) return false;
                     if (filtroBase !== "" && lote.baseSegmento !== filtroBase) return false;
                     if (upperFiltroTexto && !lote.codigo.includes(upperFiltroTexto)) return false;
@@ -313,11 +333,11 @@
                     }
                     return true;
                 });
-            }, [lotes, filtroTexto, filtroBase, filtroStatus, dataInicio, dataFim]);
+            }, [lotes, filtroTexto, filtroBase, filtroStatus, dataInicio, dataFim, deletingIds]);
 
             const statsPorBase = useMemo(() => {
                 const dataBR = formatDateToPTBR(dataMonitoramento);
-                const lotesDoDia = lotes.filter(l => l.dataCriacao === dataBR);
+                const lotesDoDia = lotes.filter(l => !deletingIds.has(l.id) && l.dataCriacao === dataBR);
                 const agrupamento = {};
                 listaBases.forEach(b => agrupamento[b] = 0);
                 lotesDoDia.forEach(l => {
@@ -327,13 +347,13 @@
                 return Object.entries(agrupamento)
                     .map(([base, count]) => ({ base, count }))
                     .sort((a, b) => b.count - a.count);
-            }, [lotes, dataMonitoramento, listaBases]);
+            }, [lotes, dataMonitoramento, listaBases, deletingIds]);
 
             const lotesConsulta = useMemo(() => {
                 if (!consultaTermo) return [];
                 const term = consultaTermo.toUpperCase();
-                return lotes.filter(l => l.codigo.includes(term));
-            }, [lotes, consultaTermo]);
+                return lotes.filter(l => !deletingIds.has(l.id) && l.codigo.includes(term));
+            }, [lotes, consultaTermo, deletingIds]);
 
             const exportarCSV = () => {
                 if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
@@ -547,12 +567,22 @@
                 if (lote.status === 'impressao') { 
                     if (prompt("Atenção! Item já Processado. Digite a Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); 
                 } 
+
+                // OTIMIZAÇÃO DE VELOCIDADE MÁXIMA: 
+                // Coloca o ID imediatamente numa lista negra local, ocultando instantaneamente o elemento do DOM 
+                setDeletingIds(prev => new Set(prev).add(id));
                 
                 try {
                     await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
                 } catch (error) {
                     console.error("Erro ao deletar:", error);
                     alert("Falha na rede. O item não pôde ser excluído.");
+                    // Se falhar a conexão, devolvemos o item para a tela
+                    setDeletingIds(prev => {
+                        const next = new Set(prev);
+                        next.delete(id);
+                        return next;
+                    });
                 }
             };
 
@@ -621,11 +651,11 @@
             const statsImpressao = useMemo(() => {
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
                 const temSelecao = basesSelecionadas.size > 0;
-                const filtrados = lotes.filter(l => l.dataCriacao === dataBR && (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao) && (!temSelecao || basesSelecionadas.has(l.baseSegmento)));
+                const filtrados = lotes.filter(l => !deletingIds.has(l.id) && l.dataCriacao === dataBR && (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao) && (!temSelecao || basesSelecionadas.has(l.baseSegmento)));
                 return { total: filtrados.length, impressos: filtrados.filter(l => l.status === 'impressao').length, pendentes: filtrados.filter(l => l.status === 'pendente').length };
-            }, [lotes, dataImpressaoMassa, periodoImpressao, basesSelecionadas]);
+            }, [lotes, dataImpressaoMassa, periodoImpressao, basesSelecionadas, deletingIds]);
 
-            const pendentes = useMemo(() => lotes.filter(l => l.status === 'pendente'), [lotes]);
+            const pendentes = useMemo(() => lotes.filter(l => !deletingIds.has(l.id) && l.status === 'pendente'), [lotes, deletingIds]);
             
             const agrupadosPendentes = useMemo(() => {
                 const buscaLote = pendenteBuscaLote.toUpperCase();
@@ -643,12 +673,13 @@
                 const buscaTermo = processadoBusca.toUpperCase();
                 
                 return lotes.filter(l => 
+                    !deletingIds.has(l.id) &&
                     l.status === 'impressao' && 
                     l.dataCriacao === dataFiltro && 
                     (processadoBaseFiltro ? l.baseSegmento === processadoBaseFiltro : true) && 
                     (buscaTermo ? l.codigo.includes(buscaTermo) : true)
                 );
-            }, [lotes, processadosDataFiltro, processadoBaseFiltro, processadoBusca]);
+            }, [lotes, processadosDataFiltro, processadoBaseFiltro, processadoBusca, deletingIds]);
 
             const alertas = useMemo(() => pendentes.filter(l => verificarAlerta10Horas(l.timestampCriacao)), [pendentes, verificarAlerta10Horas]);
 
@@ -805,7 +836,6 @@
                                             <h3 className="font-bold text-orange-800 uppercase text-xs flex gap-2 items-center"><Icons.Clock className="w-4 h-4"/> Pendentes</h3>
                                             <span className="bg-orange-200 text-orange-900 px-2 rounded-full font-bold text-[10px]">{pendentes.length}</span>
                                         </div>
-                                        {/* OTIMIZAÇÃO: LIMITANDO A RENDERIZAÇÃO DO DOM AQUI PARA EVITAR LENTIDÃO */}
                                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                             {Object.entries(agrupadosPendentes).map(([base, list]) => (
                                                 <div key={base} className="border rounded-lg overflow-hidden shadow-sm">
@@ -848,7 +878,6 @@
                                                 <select value={processadoBaseFiltro} onChange={e=>setProcessadoBaseFiltro(e.target.value)} className="text-[10px] border rounded p-1 focus:outline-none"><option value="">Todas Bases</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                             </div>
                                         </div>
-                                        {/* OTIMIZAÇÃO: LIMITANDO A RENDERIZAÇÃO DO DOM AQUI PARA EVITAR LENTIDÃO EXTREMA */}
                                         <div className="flex-1 overflow-y-auto p-4 space-y-2 relative">
                                             {processados.length > 150 && (
                                                 <div className="sticky top-0 z-10 text-center text-blue-800 bg-blue-100 p-2 rounded text-[10px] font-bold shadow-sm mb-2 opacity-90">
