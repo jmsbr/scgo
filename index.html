@@ -37,7 +37,7 @@
 
         const app = initializeApp(firebaseConfig);
         
-        // OTIMIZAÇÃO CRÍTICA: Habilita cache offline. Evita "perda de informação" se a internet piscar
+        // Habilita cache offline
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
         });
@@ -74,13 +74,13 @@
         .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
         /* Otimização de Scrollbars */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans text-gray-800">
+<body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-indigo-200 selection:text-indigo-900">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -106,17 +106,18 @@
             Download: (props) => <Icon {...props} path={<React.Fragment><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></React.Fragment>} />,
             Calendar: (props) => <Icon {...props} path={<React.Fragment><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></React.Fragment>} />,
             List: (props) => <Icon {...props} path={<React.Fragment><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></React.Fragment>} />,
-            Settings: (props) => <Icon {...props} path={<React.Fragment><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></React.Fragment>} />
+            Settings: (props) => <Icon {...props} path={<React.Fragment><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></React.Fragment>} />,
+            Warning: (props) => <Icon {...props} path={<React.Fragment><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></React.Fragment>} />
         };
 
         const LISTA_PADRAO = [
-          "751-02 — SMB - GO", "751-05 — F RVD - GO", "751-06 — IPR - GO", "751-07 — F TRD - GO",
-          "751-08 — F GYN - GO", "751-10 — F ANP - GO", "751-14 — F APG - GO",
-          "751-18 — F CTL - GO", "751-24 — F GYN 02 - GO", "751-25 — F SEN - GO",
-          "751-26 — GYN 05 - GO", "760-00 — F GYN 04 - GO",
-          "752-00 — F PDR - GO", "759-00 — F PON - GO", "762-00 — F GYN 03 - GO",
-          "783-00 — F QUI-GO",
-          "782-00 — F CRX - GO", "758-00 — F JRG - GO"
+            "751-02 — SMB - GO", "751-05 — F RVD - GO", "751-06 — IPR - GO", "751-07 — F TRD - GO",
+            "751-08 — F GYN - GO", "751-10 — F ANP - GO", "751-14 — F APG - GO",
+            "751-18 — F CTL - GO", "751-24 — F GYN 02 - GO", "751-25 — F SEN - GO",
+            "751-26 — GYN 05 - GO", "760-00 — F GYN 04 - GO",
+            "752-00 — F PDR - GO", "759-00 — F PON - GO", "762-00 — F GYN 03 - GO",
+            "783-00 — F QUI-GO",
+            "782-00 — F CRX - GO", "758-00 — F JRG - GO"
         ];
 
         const playErrorSound = () => {
@@ -145,7 +146,6 @@
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
-        // Memorizando o componente QR para evitar travamentos na aba de impressão
         const QRCodeImage = React.memo(({ text, size = 100 }) => {
             const canvasRef = useRef(null);
             useEffect(() => {
@@ -156,9 +156,104 @@
             return <canvas ref={canvasRef} width={size} height={size} style={{ width: '100%', height: 'auto' }} />;
         });
 
+        const CustomDialog = ({ dialog, closeDialog }) => {
+            if (!dialog.isOpen) return null;
+
+            const [inputValue, setInputValue] = useState('');
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (dialog.isOpen && dialog.type === 'prompt' && inputRef.current) {
+                    setTimeout(() => inputRef.current.focus(), 100);
+                }
+            }, [dialog.isOpen, dialog.type]);
+
+            const handleConfirm = () => {
+                if (dialog.type === 'prompt') {
+                    if (dialog.onConfirm) dialog.onConfirm(inputValue);
+                } else if (dialog.onConfirm) {
+                    dialog.onConfirm();
+                } else {
+                    closeDialog();
+                }
+                setInputValue('');
+            };
+
+            const handleCancel = () => {
+                if (dialog.onCancel) dialog.onCancel();
+                closeDialog();
+                setInputValue('');
+            };
+
+            return (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in duration-200">
+                        <div className="flex items-center gap-3 mb-4">
+                            {dialog.type === 'alert' && <Icons.Warning className="w-6 h-6 text-orange-500" />}
+                            {dialog.type === 'confirm' && <Icons.CheckSquare className="w-6 h-6 text-blue-500" />}
+                            {dialog.type === 'prompt' && <Icons.Settings className="w-6 h-6 text-indigo-500" />}
+                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">{dialog.title || 'Aviso'}</h3>
+                        </div>
+                        
+                        <p className="text-sm text-slate-600 mb-6 whitespace-pre-wrap font-medium">{dialog.message}</p>
+
+                        {dialog.type === 'prompt' && (
+                            <input
+                                ref={inputRef}
+                                type="password"
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 mb-6 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition shadow-sm"
+                                placeholder="Digite a senha..."
+                                onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+                            />
+                        )}
+
+                        <div className="flex justify-end gap-3">
+                            {dialog.type !== 'alert' && (
+                                <button onClick={handleCancel} className="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-sm transition">
+                                    Cancelar
+                                </button>
+                            )}
+                            <button onClick={handleConfirm} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition shadow-md hover:shadow-lg active:scale-95">
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         function App() {
-            const [activeTab, setActiveTab] = useState('operacao');
+            // Estado do Balão JMS
+            const [showJMSWarning, setShowJMSWarning] = useState(true);
+
+            // Estado do Modal Personalizado
+            const [dialog, setDialog] = useState({ isOpen: false });
+
+            // Funções auxiliares para invocar o Modal
+            const closeDialog = () => setDialog({ isOpen: false });
             
+            const showAlert = (message, title = "Aviso") => {
+                setDialog({ isOpen: true, type: 'alert', title, message, onConfirm: closeDialog });
+            };
+            
+            const showConfirm = (message, onConfirmCallback, title = "Confirmação") => {
+                setDialog({ 
+                    isOpen: true, type: 'confirm', title, message, 
+                    onConfirm: () => { closeDialog(); onConfirmCallback(); }
+                });
+            };
+
+            const showPrompt = (message, onConfirmCallback, title = "Acesso Restrito") => {
+                setDialog({ 
+                    isOpen: true, type: 'prompt', title, message, 
+                    onConfirm: (val) => { closeDialog(); onConfirmCallback(val); }
+                });
+            };
+
+            // Estados da Aplicação
+            const [activeTab, setActiveTab] = useState('operacao');
             const [listaBases, setListaBases] = useState(LISTA_PADRAO);
             const [basesExtras, setBasesExtras] = useState([]); 
 
@@ -169,11 +264,9 @@
             const [dbConnected, setDbConnected] = useState(false);
             const [isLoadingData, setIsLoadingData] = useState(true);
 
-            // OTIMIZAÇÃO CRÍTICA EXCLUSÃO: Ocultação Otimista Instantânea
             const [deletingIds, setDeletingIds] = useState(new Set());
 
             const [modoEntrada, setModoEntrada] = useState('scanner');
-            
             const loteInputRef = useRef(null);
             const lotesMassaRef = useRef(null);
             
@@ -218,7 +311,6 @@
                 lastBaseStatusRef.current = !novaBase || isValid;
             }, [novaBase, isBaseValida]);
 
-            // LIMPEZA DA MEMÓRIA: Remove IDs da lista de deletados quando eles sumirem definitivamente do banco
             useEffect(() => {
                 if (deletingIds.size > 0) {
                     setDeletingIds(prev => {
@@ -238,13 +330,14 @@
             const handleTabClick = (key) => {
                 if (key === 'admin') {
                     if (!isAdminUnlocked) {
-                        const pass = prompt("Acesso Administrativo Restrito. Digite a senha:");
-                        if (pass === SENHA_MESTRA) {
-                            setIsAdminUnlocked(true);
-                            setActiveTab(key);
-                        } else if (pass !== null) {
-                            alert("Senha Incorreta!");
-                        }
+                        showPrompt("Acesso Administrativo Restrito. Digite a senha:", (pass) => {
+                            if (pass === SENHA_MESTRA) {
+                                setIsAdminUnlocked(true);
+                                setActiveTab(key);
+                            } else {
+                                showAlert("Senha Incorreta!", "Erro");
+                            }
+                        });
                     } else {
                         setActiveTab(key);
                     }
@@ -274,7 +367,7 @@
             }, [now]);
 
             const imprimirSelecionados = () => {
-                if (selectedIds.size === 0) return alert("Selecione pelo menos um lote.");
+                if (selectedIds.size === 0) return showAlert("Selecione pelo menos um lote.", "Atenção");
                 const selecionados = lotes.filter(l => selectedIds.has(l.id));
                 setLotesParaImprimir(selecionados);
                 setTimeout(() => {
@@ -285,26 +378,26 @@
 
             const mudarStatusEmMassa = async (itens, novoStatus) => {
                 if (!dbConnected) return;
-                if (!confirm(`Confirma mover TODOS os ${itens.length} itens deste segmento para Processados?`)) return;
+                showConfirm(`Confirma mover TODOS os ${itens.length} itens deste segmento para Processados?`, async () => {
+                    const batch = window.fb.writeBatch(window.db);
+                    const dataHora = new Date().toLocaleString('pt-BR');
 
-                const batch = window.fb.writeBatch(window.db);
-                const dataHora = new Date().toLocaleString('pt-BR');
+                    itens.forEach(item => {
+                        const docRef = window.fb.doc(window.db, "lotes", item.id);
+                        const novoHistorico = [
+                            ...(item.historico || []),
+                            { status: novoStatus.toUpperCase(), data: dataHora, detalhe: 'Ação em massa por segmento' }
+                        ];
+                        batch.update(docRef, { status: novoStatus, historico: novoHistorico });
+                    });
 
-                itens.forEach(item => {
-                    const docRef = window.fb.doc(window.db, "lotes", item.id);
-                    const novoHistorico = [
-                        ...(item.historico || []),
-                        { status: novoStatus.toUpperCase(), data: dataHora, detalhe: 'Ação em massa por segmento' }
-                    ];
-                    batch.update(docRef, { status: novoStatus, historico: novoHistorico });
+                    try {
+                        await batch.commit();
+                    } catch (error) {
+                        console.error("Erro em massa:", error);
+                        showAlert("Erro ao atualizar em massa.", "Erro");
+                    }
                 });
-
-                try {
-                    await batch.commit();
-                } catch (error) {
-                    console.error("Erro em massa:", error);
-                    alert("Erro ao atualizar em massa.");
-                }
             };
 
             const lotesFiltradosRelatorio = useMemo(() => {
@@ -312,7 +405,7 @@
                 const hasDateFilter = Boolean(dataInicio || dataFim); 
 
                 return lotes.filter(lote => {
-                    if (deletingIds.has(lote.id)) return false; // Esconde instataneamente os itens apagados
+                    if (deletingIds.has(lote.id)) return false; 
                     if (filtroStatus !== 'todos' && lote.status !== filtroStatus) return false;
                     if (filtroBase !== "" && lote.baseSegmento !== filtroBase) return false;
                     if (upperFiltroTexto && !lote.codigo.includes(upperFiltroTexto)) return false;
@@ -356,7 +449,7 @@
             }, [lotes, consultaTermo, deletingIds]);
 
             const exportarCSV = () => {
-                if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
+                if (lotesFiltradosRelatorio.length === 0) return showAlert("Nada para exportar", "Atenção");
                 const cabecalho = "Data;Lote;Base;Status;Periodo;Hora";
                 const linhas = lotesFiltradosRelatorio.map(l => `${l.dataCriacao};${l.codigo};${l.baseSegmento};${l.status};${l.periodo};${l.horaCriacao}`);
                 const csvContent = "data:text/csv;charset=utf-8," + [cabecalho, ...linhas].join("\n");
@@ -370,7 +463,7 @@
             };
 
             const exportarExcel = () => {
-                if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
+                if (lotesFiltradosRelatorio.length === 0) return showAlert("Nada para exportar", "Atenção");
                 const dadosFormatados = lotesFiltradosRelatorio.map(l => ({
                     "Data Criação": l.dataCriacao, "Hora": l.horaCriacao, "Código Lote": l.codigo,
                     "Base/Segmento": l.baseSegmento, "Status": l.status, "Período": l.periodo
@@ -383,8 +476,8 @@
             };
 
             const exportarPDF = () => {
-                if (lotesFiltradosRelatorio.length === 0) return alert("Nada para exportar");
-                if (!window.jspdf) return alert("Biblioteca PDF não carregou.");
+                if (lotesFiltradosRelatorio.length === 0) return showAlert("Nada para exportar", "Atenção");
+                if (!window.jspdf) return showAlert("Biblioteca PDF não carregou.", "Erro");
                 const doc = new window.jspdf.jsPDF();
                 doc.setFontSize(16); doc.text("Relatório de Sistema de Lotes", 14, 20);
                 doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
@@ -392,7 +485,7 @@
                 const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
                 const tableRows = lotesFiltradosRelatorio.map(l => [l.dataCriacao, l.horaCriacao, l.codigo, l.baseSegmento, l.status, l.periodo]);
                 doc.autoTable({
-                    head: [tableColumn], body: tableRows, startY: 36, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [63, 81, 181] },
+                    head: [tableColumn], body: tableRows, startY: 36, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [79, 70, 229] },
                     didDrawPage: (data) => {
                         const pageSize = doc.internal.pageSize;
                         const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
@@ -460,18 +553,18 @@
             const adicionarNovaBaseAdmin = async () => {
                 const nome = novaBaseAdmin.trim().toUpperCase();
                 if (!nome) return;
-                if (listaBases.includes(nome)) { playErrorSound(); return alert("Esta base já existe no sistema!"); }
+                if (listaBases.includes(nome)) { playErrorSound(); return showAlert("Esta base já existe no sistema!", "Erro"); }
                 try {
                     await window.fb.addDoc(window.fb.collection(window.db, "segmentos_extras"), { nome: nome, dataCriacao: new Date().toISOString() });
                     setNovaBaseAdmin('');
-                } catch (error) { console.error(error); alert("Erro ao adicionar a base."); }
+                } catch (error) { console.error(error); showAlert("Erro ao adicionar a base.", "Erro"); }
             };
 
             const removerBaseExtraAdmin = async (id, nomeBase) => {
-                if(confirm(`Remover a base "${nomeBase}"?\nIsso não apagará os lotes antigos.`)) {
+                showConfirm(`Remover a base "${nomeBase}"?\nIsso não apagará os lotes antigos.`, async () => {
                     try { await window.fb.deleteDoc(window.fb.doc(window.db, "segmentos_extras", id)); } 
-                    catch (error) { console.error(error); alert("Erro ao remover."); }
-                }
+                    catch (error) { console.error(error); showAlert("Erro ao remover.", "Erro"); }
+                });
             };
 
             const adicionarLote = (e) => {
@@ -486,12 +579,16 @@
 
                 if (!codigo) return;
                 if (!base || !isBaseValida(base)) { playErrorSound(); return; }
-                if ((codigo.match(/BR/g) || []).length > 1) { playErrorSound(); alert(`⚠️ ERRO: Leitura duplicada na mesma string detectada.`); return; }
+                if ((codigo.match(/BR/g) || []).length > 1) { 
+                    playErrorSound(); 
+                    showAlert(`⚠️ ERRO: Leitura duplicada na mesma string detectada.`, "Erro de Leitura"); 
+                    return; 
+                }
 
                 const loteExistente = lotes.find(l => l.codigo === codigo);
                 if (loteExistente) {
                     playErrorSound();
-                    alert(`⚠️ ALERTA: LOTE DUPLICADO!\n\nO lote "${codigo}" JÁ EXISTE no sistema!\n\nBase: ${loteExistente.baseSegmento}\nData: ${loteExistente.dataCriacao}\nStatus Atual: ${loteExistente.status.toUpperCase()}`);
+                    showAlert(`O lote "${codigo}" JÁ EXISTE no sistema!\n\nBase: ${loteExistente.baseSegmento}\nData: ${loteExistente.dataCriacao}\nStatus Atual: ${loteExistente.status.toUpperCase()}`, "⚠️ ALERTA: LOTE DUPLICADO!");
                     return;
                 }
 
@@ -504,7 +601,7 @@
                     historico: [{ status: 'CRIADO', data: dataAtual.toLocaleString('pt-BR'), detalhe: 'Entrada rápida' }]
                 }).catch(err => {
                     console.error("Erro salvando", err);
-                    alert("Erro ao salvar. Verifique sua rede.");
+                    showAlert("Erro ao salvar. Verifique sua rede.", "Erro de Conexão");
                 });
             };
 
@@ -514,7 +611,7 @@
 
                 if (!textoPlano.trim() || !novaBase || !isBaseValida(novaBase)) { 
                     playErrorSound(); 
-                    return alert("Verifique a lista de lotes e a base selecionada."); 
+                    return showAlert("Verifique a lista de lotes e a base selecionada.", "Atenção"); 
                 }
                 
                 let codigos = textoPlano.split(/\r?\n/).map(c => c.trim().toUpperCase()).filter(c => c !== '');
@@ -525,7 +622,7 @@
 
                 if (codigosNovos.length === 0) {
                     playErrorSound();
-                    alert(`⚠️ ALERTA!\nTodos os ${qtdIgnorados} lotes inseridos já existiam no sistema.\nNenhum lote foi duplicado.`);
+                    showAlert(`Todos os ${qtdIgnorados} lotes inseridos já existiam no sistema.\nNenhum lote foi duplicado.`, "⚠️ ALERTA!");
                     return;
                 }
 
@@ -545,10 +642,10 @@
                     await batch.commit();
                     lotesMassaRef.current.value = ''; 
                     setModoEntrada('scanner'); 
-                    alert(`✅ SUCESSO!\n\n${codigosNovos.length} lotes foram inseridos.\n${qtdIgnorados > 0 ? `⚠️ ${qtdIgnorados} lotes foram IGNORADOS por já existirem no sistema.` : ''}`);
+                    showAlert(`✅ SUCESSO!\n\n${codigosNovos.length} lotes foram inseridos.\n${qtdIgnorados > 0 ? `⚠️ ${qtdIgnorados} lotes foram IGNORADOS por já existirem no sistema.` : ''}`, "Sucesso");
                 } catch (error) {
                     console.error("Erro lote massa:", error);
-                    alert("Falha de rede ao salvar os lotes.");
+                    showAlert("Falha de rede ao salvar os lotes.", "Erro");
                 }
             };
 
@@ -564,25 +661,31 @@
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
                 
-                if (lote.status === 'impressao') { 
-                    if (prompt("Atenção! Item já Processado. Digite a Senha:") !== SENHA_MESTRA) return alert("Senha incorreta."); 
-                } 
+                const execDelete = async () => {
+                    setDeletingIds(prev => new Set(prev).add(id));
+                    try {
+                        await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
+                    } catch (error) {
+                        console.error("Erro ao deletar:", error);
+                        showAlert("Falha na rede. O item não pôde ser excluído.", "Erro");
+                        setDeletingIds(prev => {
+                            const next = new Set(prev);
+                            next.delete(id);
+                            return next;
+                        });
+                    }
+                };
 
-                // OTIMIZAÇÃO DE VELOCIDADE MÁXIMA: 
-                // Coloca o ID imediatamente numa lista negra local, ocultando instantaneamente o elemento do DOM 
-                setDeletingIds(prev => new Set(prev).add(id));
-                
-                try {
-                    await window.fb.deleteDoc(window.fb.doc(window.db, "lotes", id));
-                } catch (error) {
-                    console.error("Erro ao deletar:", error);
-                    alert("Falha na rede. O item não pôde ser excluído.");
-                    // Se falhar a conexão, devolvemos o item para a tela
-                    setDeletingIds(prev => {
-                        const next = new Set(prev);
-                        next.delete(id);
-                        return next;
+                if (lote.status === 'impressao') { 
+                    showPrompt("Atenção! Item já Processado. Digite a Senha:", (pass) => {
+                        if (pass !== SENHA_MESTRA) {
+                            showAlert("Senha incorreta.", "Erro");
+                        } else {
+                            execDelete();
+                        }
                     });
+                } else {
+                    execDelete();
                 }
             };
 
@@ -593,38 +696,46 @@
             };
 
             const moverLotesSelecionados = async () => {
-                if (selectedIds.size === 0 || !dataParaMover) return alert("Selecione os lotes e a data.");
-                if (prompt("Senha para MOVER:") !== SENHA_MESTRA) return alert("Senha incorreta.");
-                const novaDataBR = formatDateToPTBR(dataParaMover);
-                for (let id of selectedIds) {
-                    const lote = lotes.find(l => l.id === id);
-                    if (lote) {
-                        const hist = [...(lote.historico || []), { status: 'MOVIDO', data: new Date().toLocaleString('pt-BR'), detalhe: `Data para ${novaDataBR}` }];
-                        await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { dataCriacao: novaDataBR, historico: hist });
+                if (selectedIds.size === 0 || !dataParaMover) return showAlert("Selecione os lotes e a data.", "Atenção");
+                
+                showPrompt("Senha para MOVER lotes:", async (pass) => {
+                    if (pass !== SENHA_MESTRA) return showAlert("Senha incorreta.", "Erro");
+                    const novaDataBR = formatDateToPTBR(dataParaMover);
+                    for (let id of selectedIds) {
+                        const lote = lotes.find(l => l.id === id);
+                        if (lote) {
+                            const hist = [...(lote.historico || []), { status: 'MOVIDO', data: new Date().toLocaleString('pt-BR'), detalhe: `Data para ${novaDataBR}` }];
+                            await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { dataCriacao: novaDataBR, historico: hist });
+                        }
                     }
-                }
-                setSelectedIds(new Set()); alert("Movidos com sucesso!");
+                    setSelectedIds(new Set()); 
+                    showAlert("Movidos com sucesso!", "Sucesso");
+                });
             };
 
             const alterarBaseSelecionados = async () => {
-                if (selectedIds.size === 0 || !baseParaAlterar) return alert("Selecione os lotes e a nova base.");
-                if (prompt("Senha para ALTERAR BASE:") !== SENHA_MESTRA) return alert("Senha incorreta.");
-                for (let id of selectedIds) {
-                    const lote = lotes.find(l => l.id === id);
-                    if (lote) {
-                        const hist = [...(lote.historico || []), { status: 'BASE_ALT', data: new Date().toLocaleString('pt-BR'), detalhe: `Base para ${baseParaAlterar}` }];
-                        await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { baseSegmento: baseParaAlterar, historico: hist });
+                if (selectedIds.size === 0 || !baseParaAlterar) return showAlert("Selecione os lotes e a nova base.", "Atenção");
+                
+                showPrompt("Senha para ALTERAR BASE:", async (pass) => {
+                    if (pass !== SENHA_MESTRA) return showAlert("Senha incorreta.", "Erro");
+                    for (let id of selectedIds) {
+                        const lote = lotes.find(l => l.id === id);
+                        if (lote) {
+                            const hist = [...(lote.historico || []), { status: 'BASE_ALT', data: new Date().toLocaleString('pt-BR'), detalhe: `Base para ${baseParaAlterar}` }];
+                            await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { baseSegmento: baseParaAlterar, historico: hist });
+                        }
                     }
-                }
-                setSelectedIds(new Set()); setBaseParaAlterar(''); alert("Base alterada!");
+                    setSelectedIds(new Set()); setBaseParaAlterar(''); 
+                    showAlert("Base alterada com sucesso!", "Sucesso");
+                });
             };
 
             const prepararImpressaoDoDia = async () => {
-                if (basesSelecionadas.size === 0) return alert("Selecione ao menos uma base para imprimir.");
+                if (basesSelecionadas.size === 0) return showAlert("Selecione ao menos uma base para imprimir.", "Atenção");
                 const dataBR = formatDateToPTBR(dataImpressaoMassa);
                 let filtrados = lotes.filter(l => basesSelecionadas.has(l.baseSegmento) && l.dataCriacao === dataBR && (periodoImpressao === 'Todos' ? true : l.periodo === periodoImpressao));
                 
-                if (filtrados.length === 0) return alert("Nada encontrado para os filtros selecionados.");
+                if (filtrados.length === 0) return showAlert("Nada encontrado para os filtros selecionados.", "Atenção");
                 
                 filtrados.sort((a, b) => {
                     const baseA = a.baseSegmento || ''; const baseB = b.baseSegmento || '';
@@ -632,20 +743,28 @@
                 });
 
                 const pendentesArr = filtrados.filter(l => l.status === 'pendente');
+                
+                const executarImpressao = async () => {
+                    if (pendentesArr.length > 0) {
+                        const batch = window.fb.writeBatch(window.db);
+                        pendentesArr.forEach(p => {
+                            const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Em Massa` }];
+                            batch.update(window.fb.doc(window.db, "lotes", p.id), { status: 'impressao', historico: h });
+                        });
+                        await batch.commit();
+                    }
+                    setLotesParaImprimir(filtrados);
+                    setTimeout(() => {
+                        window.print();
+                        setTimeout(() => setLotesParaImprimir([]), 2000); 
+                    }, 500);
+                };
+
                 if (pendentesArr.length > 0) {
-                    if(!confirm(`Serão processados ${pendentesArr.length} itens. Confirma?`)) return;
-                    const batch = window.fb.writeBatch(window.db);
-                    pendentesArr.forEach(p => {
-                        const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Em Massa` }];
-                        batch.update(window.fb.doc(window.db, "lotes", p.id), { status: 'impressao', historico: h });
-                    });
-                    await batch.commit();
+                    showConfirm(`Serão processados ${pendentesArr.length} itens. Confirma a impressão?`, executarImpressao);
+                } else {
+                    executarImpressao();
                 }
-                setLotesParaImprimir(filtrados);
-                setTimeout(() => {
-                    window.print();
-                    setTimeout(() => setLotesParaImprimir([]), 2000); 
-                }, 500);
             };
 
             const statsImpressao = useMemo(() => {
@@ -692,42 +811,60 @@
             };
 
             return (
-                <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
+                <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
                     
-                    {/* BANNER DE AVISO DE DESATIVAÇÃO DO SISTEMA */}
-                    <div className="bg-red-600 text-white px-4 py-2 shadow-md no-print border-b-4 border-red-800 relative z-50">
-                        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 font-bold text-xs md:text-sm text-center tracking-wide">
-                            <span className="text-lg animate-pulse">📢</span>
-                            <span>AVISO IMPORTANTE: Informamos que este sistema será descontinuado. A partir deste momento, o JMS deverá ser utilizado como sistema padrão para a gestão de lotes.</span>
-                            <span className="text-lg animate-pulse">⚠️</span>
-                        </div>
-                    </div>
+                    {/* Renderização do Sistema de Diálogo (Alertas Personalizados) */}
+                    <CustomDialog dialog={dialog} closeDialog={closeDialog} />
 
-                    <div className="bg-slate-900 text-white shadow-lg no-print">
-                        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-3">
-                                <Icons.Package className="w-8 h-8 text-indigo-400" />
+                    {/* NOVO BALÃO / MODAL DE AVISO OBRIGATÓRIO JMS */}
+                    {showJMSWarning && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md no-print">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center animate-in zoom-in-95 duration-300">
+                                <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                    <span className="text-4xl">⚠️</span>
+                                </div>
+                                <h2 className="text-2xl font-black text-slate-800 mb-3 uppercase tracking-tight">Aviso Importante</h2>
+                                <p className="text-slate-600 font-semibold text-base mb-8 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    O sistema <strong className="text-indigo-700">JMS</strong> deve ser utilizado obrigatoriamente como ferramenta padrão para gestão, criação, movimentação e acompanhamento de lotes operacionais.
+                                </p>
+                                <button
+                                    onClick={() => setShowJMSWarning(false)}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg hover:shadow-indigo-500/30 active:scale-95 text-sm tracking-wide uppercase"
+                                >
+                                    Estou Ciente e Vou Utilizar o JMS
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CABEÇALHO */}
+                    <div className="bg-slate-900 text-white shadow-xl no-print">
+                        <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-indigo-500/20 rounded-2xl border border-indigo-500/30 shadow-inner">
+                                    <Icons.Package className="w-8 h-8 text-indigo-400" />
+                                </div>
                                 <div>
-                                    <h1 className="text-2xl font-bold uppercase tracking-tight">Sistema de Lotes</h1>
-                                    <p className="text-slate-400 text-[10px] flex items-center gap-1 uppercase">
-                                        <span className={`w-2 h-2 rounded-full ${dbConnected ? (isLoadingData ? 'bg-yellow-400 animate-pulse' : 'bg-green-500') : 'bg-red-500'}`}></span>
-                                        {dbConnected ? (isLoadingData ? 'SINCRONIZANDO DADOS...' : 'SISTEMA ONLINE E OTIMIZADO') : 'OFFLINE'}
+                                    <h1 className="text-2xl font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Sistema de Lotes</h1>
+                                    <p className="text-slate-400 text-[10px] font-bold flex items-center gap-1.5 uppercase mt-1 tracking-widest">
+                                        <span className={`w-2.5 h-2.5 rounded-full shadow-sm ${dbConnected ? (isLoadingData ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400') : 'bg-rose-500'}`}></span>
+                                        {dbConnected ? (isLoadingData ? 'SINCRONIZANDO...' : 'SISTEMA OTIMIZADO') : 'OFFLINE'}
                                     </p>
                                 </div>
                             </div>
                             
-                            <div className="flex bg-slate-800 p-1 rounded-lg overflow-x-auto">
+                            <div className="flex bg-slate-800/80 p-1.5 rounded-2xl overflow-x-auto shadow-inner border border-slate-700 w-full md:w-auto">
                                 {Object.entries(tabConfig).map(([key, config]) => (
                                     <button 
                                         key={key} 
                                         onClick={()=>handleTabClick(key)} 
-                                        className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition ${activeTab===key?'bg-indigo-600 shadow text-white':'text-slate-300 hover:bg-slate-700 hover:text-white'} ${key==='admin' && !isAdminUnlocked ? 'text-orange-300' : ''}`}
+                                        className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all whitespace-nowrap flex-1 md:flex-none ${activeTab===key?'bg-indigo-600 shadow-md text-white':'text-slate-300 hover:bg-slate-700 hover:text-white'} ${key==='admin' && !isAdminUnlocked ? 'text-amber-300/80' : ''}`}
                                     >
                                         {config.icon}
                                         {config.label}
-                                        {key === 'admin' && !isAdminUnlocked && <span className="ml-1 opacity-50">🔒</span>}
+                                        {key === 'admin' && !isAdminUnlocked && <span className="ml-1 opacity-50 text-xs">🔒</span>}
                                         {key === 'monitoramento' && alertas.length > 0 && (
-                                            <span className="bg-red-500 text-white px-1.5 rounded-full text-[10px] animate-pulse">
+                                            <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[10px] animate-pulse shadow-md">
                                                 {alertas.length}
                                             </span>
                                         )}
@@ -739,100 +876,101 @@
 
                     <main className="max-w-7xl mx-auto p-4 md:p-6 no-print">
                         {isLoadingData && lotes.length === 0 && (
-                            <div className="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-xl flex items-center justify-center gap-3 text-yellow-800 font-bold shadow-sm">
-                                <div className="w-5 h-5 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-                                Baixando informações do banco de dados. Se a internet estiver lenta, aguarde...
+                            <div className="mb-6 bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-center justify-center gap-4 text-amber-800 font-bold shadow-sm animate-in fade-in">
+                                <div className="w-6 h-6 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                                Baixando informações do banco de dados. Aguarde...
                             </div>
                         )}
 
                         {activeTab === 'operacao' && (
-                            <div className="space-y-6">
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow border border-gray-200">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h2 className="text-lg font-bold text-gray-700 flex gap-2"><Icons.Plus className="text-green-600"/> Registrar Entrada</h2>
-                                            <div className="flex bg-gray-100 rounded-lg p-1 text-[10px] font-bold">
-                                                <button onClick={()=>setModoEntrada('scanner')} className={`px-3 py-1 rounded transition ${modoEntrada==='scanner'?'bg-white shadow text-indigo-600':'text-gray-500'}`}>SCANNER</button>
-                                                <button onClick={()=>setModoEntrada('massa')} className={`px-3 py-1 rounded transition ${modoEntrada==='massa'?'bg-white shadow text-indigo-600':'text-gray-500'}`}>EM MASSA</button>
+                                    <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-100">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                            <h2 className="text-xl font-black text-slate-800 flex gap-2 tracking-tight uppercase"><Icons.Plus className="text-emerald-500 w-6 h-6"/> Registrar Entrada</h2>
+                                            <div className="flex bg-slate-100 rounded-xl p-1 text-xs font-bold shadow-inner">
+                                                <button onClick={()=>setModoEntrada('scanner')} className={`px-4 py-2 rounded-lg transition-all ${modoEntrada==='scanner'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>SCANNER</button>
+                                                <button onClick={()=>setModoEntrada('massa')} className={`px-4 py-2 rounded-lg transition-all ${modoEntrada==='massa'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>EM MASSA</button>
                                             </div>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-5">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div className="relative">
-                                                    <label className="text-[10px] font-bold text-gray-500 uppercase">Base / Segmento (Obrigatório)</label>
+                                                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1 block">Base / Segmento</label>
                                                     <input 
                                                         list="bases-op" 
                                                         value={novaBase} 
                                                         onChange={e=>setNovaBase(e.target.value)} 
-                                                        className={`w-full border rounded-lg px-4 py-2 uppercase font-bold text-sm ${novaBase && !isBaseValida(novaBase) ? 'invalid-base shake' : ''}`} 
-                                                        placeholder="Escolha a base..." 
+                                                        className={`w-full border-2 rounded-xl px-4 py-3 uppercase font-bold text-sm transition-all focus:ring-4 focus:ring-indigo-100 outline-none ${novaBase && !isBaseValida(novaBase) ? 'invalid-base shake border-rose-300' : 'border-slate-200 focus:border-indigo-500'}`} 
+                                                        placeholder="Selecione a base..." 
                                                     />
                                                     <datalist id="bases-op">{listaBases.map(b=><option key={b} value={b}/>)}</datalist>
                                                     {novaBase && !isBaseValida(novaBase) && (
-                                                        <div className="absolute left-0 mt-1 w-full bg-red-100 text-red-700 p-2 rounded border border-red-200 text-[10px] font-bold z-10 shadow-sm">
-                                                            ⚠️ BASE INEXISTENTE! <br/>
-                                                            Selecione uma base disponível.
+                                                        <div className="absolute left-0 mt-2 w-full bg-rose-100 text-rose-700 p-3 rounded-lg border border-rose-200 text-[10px] font-bold z-10 shadow-lg">
+                                                            ⚠️ BASE INEXISTENTE! <br/>Selecione uma base disponível.
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 uppercase">Período</label>
-                                                    <select value={novoPeriodo} onChange={e=>setNovoPeriodo(e.target.value)} className="w-full border rounded-lg px-4 py-2 text-sm font-bold bg-white focus:outline-none">
+                                                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1 block">Período</label>
+                                                    <select value={novoPeriodo} onChange={e=>setNovoPeriodo(e.target.value)} className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none">
                                                         <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option>
                                                     </select>
                                                 </div>
                                             </div>
                                             {modoEntrada === 'scanner' ? (
-                                                <form onSubmit={adicionarLote} className="flex gap-2">
-                                                    <input ref={loteInputRef} className="flex-1 border rounded-lg px-4 py-3 font-mono font-bold bg-yellow-50 text-xl focus:ring-4 focus:ring-yellow-100" placeholder="BIPAR LOTE AQUI..." autoFocus />
-                                                    <button type="submit" disabled={novaBase && !isBaseValida(novaBase)} className={`font-bold px-6 rounded-lg transition ${novaBase && !isBaseValida(novaBase) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}>SALVAR</button>
+                                                <form onSubmit={adicionarLote} className="flex gap-3 pt-2">
+                                                    <input ref={loteInputRef} className="flex-1 border-2 border-slate-200 rounded-xl px-5 py-4 font-mono font-black bg-amber-50 text-xl md:text-2xl focus:border-amber-400 focus:ring-4 focus:ring-amber-100 transition-all outline-none placeholder:text-amber-300 uppercase tracking-wider" placeholder="BIPAR LOTE AQUI..." autoFocus />
+                                                    <button type="submit" disabled={novaBase && !isBaseValida(novaBase)} className={`font-black px-8 rounded-xl transition-all shadow-md uppercase tracking-wider ${novaBase && !isBaseValida(novaBase) ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-500 text-white hover:bg-emerald-600 hover:shadow-lg active:scale-95'}`}>SALVAR</button>
                                                 </form>
                                             ) : (
-                                                <div className="space-y-2">
-                                                    <textarea ref={lotesMassaRef} className="w-full border rounded-lg p-3 font-mono text-xs h-32 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cole os códigos (1 por linha)..."></textarea>
-                                                    <button onClick={adicionarLotesMassa} disabled={novaBase && !isBaseValida(novaBase)} className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg disabled:bg-gray-400">PROCESSAR TUDO</button>
+                                                <div className="space-y-3 pt-2">
+                                                    <textarea ref={lotesMassaRef} className="w-full border-2 border-slate-200 rounded-xl p-4 font-mono text-xs h-32 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none resize-none" placeholder="Cole os códigos dos lotes (1 por linha)..."></textarea>
+                                                    <button onClick={adicionarLotesMassa} disabled={novaBase && !isBaseValida(novaBase)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl disabled:bg-slate-300 transition-all shadow-md active:scale-95 uppercase tracking-wide">PROCESSAR TUDO EM MASSA</button>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm flex flex-col">
-                                        <h2 className="font-bold text-indigo-900 mb-4 uppercase text-[10px] flex gap-2"><Icons.Printer className="w-4 h-4"/> Impressão Diária</h2>
+                                    <div className="bg-indigo-50 p-6 md:p-8 rounded-2xl border border-indigo-100 shadow-xl flex flex-col">
+                                        <h2 className="font-black text-indigo-900 mb-5 uppercase text-xs tracking-widest flex gap-2 items-center"><Icons.Printer className="w-5 h-5 text-indigo-600"/> Impressão Diária</h2>
                                         
-                                        <div className="space-y-3 flex-1 flex flex-col">
-                                            <input type="date" value={dataImpressaoMassa} onChange={e=>setDataImpressaoMassa(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none" />
-                                            <select value={periodoImpressao} onChange={e=>setPeriodoImpressao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"><option value="Todos">TODOS PERIODOS</option><option value="Manhã">MANHÃ</option><option value="Tarde">TARDE</option></select>
+                                        <div className="space-y-4 flex-1 flex flex-col">
+                                            <div className="flex gap-2">
+                                                <input type="date" value={dataImpressaoMassa} onChange={e=>setDataImpressaoMassa(e.target.value)} className="w-1/2 border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-indigo-300 outline-none" />
+                                                <select value={periodoImpressao} onChange={e=>setPeriodoImpressao(e.target.value)} className="w-1/2 border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-indigo-300 outline-none"><option value="Todos">TODOS</option><option value="Manhã">MANHÃ</option><option value="Tarde">TARDE</option></select>
+                                            </div>
                                             
-                                            <div className="flex-1 bg-white border rounded-lg p-2 overflow-y-auto max-h-40 space-y-1">
-                                                <div className="flex items-center gap-2 border-b pb-1 mb-1 sticky top-0 bg-white z-10">
-                                                    <input type="checkbox" checked={basesSelecionadas.size === listaBases.length && listaBases.length > 0} onChange={toggleTodasBasesImpressao} className="cursor-pointer"/>
-                                                    <span className="text-[10px] font-bold uppercase text-gray-700">Selecionar Todas</span>
+                                            <div className="flex-1 bg-white border-2 border-indigo-100 rounded-xl p-3 overflow-y-auto max-h-48 space-y-1 shadow-inner">
+                                                <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-2 mb-2 sticky top-0 bg-white z-10 p-1">
+                                                    <input type="checkbox" checked={basesSelecionadas.size === listaBases.length && listaBases.length > 0} onChange={toggleTodasBasesImpressao} className="w-4 h-4 cursor-pointer text-indigo-600 rounded"/>
+                                                    <span className="text-[10px] font-black uppercase text-slate-700 tracking-wider">Selecionar Todas</span>
                                                 </div>
                                                 {listaBases.map(b => (
-                                                    <div key={b} className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded">
-                                                        <input type="checkbox" checked={basesSelecionadas.has(b)} onChange={()=>toggleBaseImpressao(b)} className="cursor-pointer"/>
-                                                        <span className="text-[9px] uppercase truncate text-gray-600 font-medium cursor-pointer" onClick={()=>toggleBaseImpressao(b)}>{b}</span>
+                                                    <div key={b} className="flex items-center gap-3 hover:bg-slate-50 p-1.5 rounded-lg transition-colors cursor-pointer" onClick={()=>toggleBaseImpressao(b)}>
+                                                        <input type="checkbox" checked={basesSelecionadas.has(b)} readOnly className="w-4 h-4 cursor-pointer text-indigo-600 rounded"/>
+                                                        <span className="text-[10px] uppercase truncate text-slate-600 font-bold select-none">{b}</span>
                                                     </div>
                                                 ))}
                                             </div>
 
-                                            <button onClick={prepararImpressaoDoDia} className="w-full bg-slate-800 text-white font-bold py-3 rounded-lg text-[10px] hover:bg-slate-900 uppercase shadow-sm border border-slate-600 flex items-center justify-center gap-2">
-                                                <Icons.Printer className="w-3 h-3"/> Gerar Etiquetas ({basesSelecionadas.size})
+                                            <button onClick={prepararImpressaoDoDia} className="w-full bg-slate-800 text-white font-black py-4 rounded-xl text-xs hover:bg-slate-900 uppercase shadow-lg border border-slate-700 flex items-center justify-center gap-2 transition-all active:scale-95 tracking-wide">
+                                                <Icons.Printer className="w-4 h-4"/> Gerar Etiquetas ({basesSelecionadas.size})
                                             </button>
 
-                                            <div className="mt-auto pt-3 border-t border-indigo-200">
-                                                <div className="text-[9px] text-center text-indigo-800 font-bold mb-1 uppercase opacity-70">Resumo da Seleção</div>
-                                                <div className="grid grid-cols-3 gap-2 text-center">
-                                                    <div className="bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
-                                                        <div className="text-[8px] text-gray-400 uppercase font-bold">Gerados</div>
-                                                        <div className="text-sm font-black text-indigo-900">{statsImpressao.total}</div>
+                                            <div className="mt-auto pt-4 border-t-2 border-indigo-100">
+                                                <div className="text-[9px] text-center text-indigo-800 font-black mb-2 uppercase opacity-80 tracking-widest">Resumo da Seleção</div>
+                                                <div className="grid grid-cols-3 gap-3 text-center">
+                                                    <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                                                        <div className="text-[9px] text-slate-400 uppercase font-black">Gerados</div>
+                                                        <div className="text-lg font-black text-indigo-900">{statsImpressao.total}</div>
                                                     </div>
-                                                    <div className="bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
-                                                        <div className="text-[8px] text-gray-400 uppercase font-bold">Impressos</div>
-                                                        <div className="text-sm font-black text-green-600">{statsImpressao.impressos}</div>
+                                                    <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                                                        <div className="text-[9px] text-slate-400 uppercase font-black">Impressos</div>
+                                                        <div className="text-lg font-black text-emerald-500">{statsImpressao.impressos}</div>
                                                     </div>
-                                                    <div className="bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
-                                                        <div className="text-[8px] text-gray-400 uppercase font-bold">Faltam</div>
-                                                        <div className="text-sm font-black text-orange-500">{statsImpressao.pendentes}</div>
+                                                    <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                                                        <div className="text-[9px] text-slate-400 uppercase font-black">Faltam</div>
+                                                        <div className="text-lg font-black text-rose-500">{statsImpressao.pendentes}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -840,194 +978,210 @@
                                     </div>
                                 </div>
 
+                                {}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white rounded-xl shadow border h-[550px] flex flex-col overflow-hidden">
-                                        <div className="p-4 bg-orange-50 border-b flex justify-between items-center">
-                                            <h3 className="font-bold text-orange-800 uppercase text-xs flex gap-2 items-center"><Icons.Clock className="w-4 h-4"/> Pendentes</h3>
-                                            <span className="bg-orange-200 text-orange-900 px-2 rounded-full font-bold text-[10px]">{pendentes.length}</span>
+                                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 h-[600px] flex flex-col overflow-hidden">
+                                        <div className="p-5 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                            <h3 className="font-black text-amber-900 uppercase text-xs flex gap-2 items-center tracking-widest"><Icons.Clock className="w-5 h-5 text-amber-600"/> Pendentes</h3>
+                                            <span className="bg-amber-200/50 text-amber-900 px-3 py-1 rounded-full font-black text-[10px] shadow-sm">{pendentes.length}</span>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                            {Object.entries(agrupadosPendentes).map(([base, list]) => (
-                                                <div key={base} className="border rounded-lg overflow-hidden shadow-sm">
-                                                    <div className="bg-gray-100 p-2 text-[10px] font-bold flex justify-between items-center uppercase">
-                                                        <span>{base} ({list.length})</span> 
-                                                        <button onClick={()=>mudarStatusEmMassa(list,'impressao')} className="text-green-700 hover:underline bg-green-100 px-2 py-0.5 rounded">USAR GRUPO</button>
-                                                    </div>
-                                                    <div className="divide-y">
-                                                        {list.length > 100 && (
-                                                            <div className="p-2 text-center text-[10px] bg-orange-100 text-orange-800 font-bold">
-                                                                ⚠️ Exibindo 100 mais recentes de {list.length} nesta base.
-                                                            </div>
-                                                        )}
-                                                        {list.slice(0, 100).map(l=>(
-                                                            <div key={l.id} className={`p-3 flex justify-between items-center ${verificarAlerta10Horas(l.timestampCriacao)?'bg-red-50':''}`}>
-                                                                <div className="font-mono font-bold uppercase">{l.codigo}</div>
-                                                                <div className="flex gap-2">
-                                                                    <button onClick={()=>removerLote(l.id)} className="text-red-300 hover:text-red-600"><Icons.Trash2 className="w-4 h-4"/></button>
-                                                                    <button onClick={()=>mudarStatus(l.id,'impressao')} className="text-[10px] border px-2 py-1 rounded font-bold bg-white hover:bg-green-50 shadow-sm uppercase">Usar</button>
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+                                            {Object.keys(agrupadosPendentes).length === 0 ? (
+                                                <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhum lote pendente</div>
+                                            ) : (
+                                                Object.entries(agrupadosPendentes).map(([base, list]) => (
+                                                    <div key={base} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                        <div className="bg-slate-100/80 p-3 text-[10px] font-black flex justify-between items-center uppercase tracking-wider">
+                                                            <span className="text-slate-700">{base} <span className="bg-slate-200 px-1.5 rounded text-slate-600 ml-1">{list.length}</span></span> 
+                                                            <button onClick={()=>mudarStatusEmMassa(list,'impressao')} className="text-emerald-700 bg-emerald-100/50 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition-colors">PROCESSAR GRUPO</button>
+                                                        </div>
+                                                        <div className="divide-y divide-slate-100">
+                                                            {list.slice(0, 100).map(l=>(
+                                                                <div key={l.id} className={`p-4 flex justify-between items-center transition-colors hover:bg-slate-50 ${verificarAlerta10Horas(l.timestampCriacao)?'bg-rose-50/50':''}`}>
+                                                                    <div className="font-mono font-black text-sm uppercase text-slate-800 tracking-wider">{l.codigo}</div>
+                                                                    <div className="flex gap-2">
+                                                                        <button onClick={()=>removerLote(l.id)} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                                        <button onClick={()=>mudarStatus(l.id,'impressao')} className="text-[10px] border-2 border-slate-200 px-3 py-1.5 rounded-lg font-black bg-white hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 shadow-sm uppercase transition-all tracking-wider">Usar</button>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="bg-white rounded-xl shadow border h-[550px] flex flex-col overflow-hidden">
-                                        <div className="p-4 bg-blue-50 border-b">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h3 className="font-bold text-blue-800 uppercase text-xs flex gap-2 items-center"><Icons.CheckSquare className="w-4 h-4"/> Processados</h3>
+
+                                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 h-[600px] flex flex-col overflow-hidden relative">
+                                        <div className="p-5 bg-indigo-50 border-b border-indigo-100">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="font-black text-indigo-900 uppercase text-xs flex gap-2 items-center tracking-widest"><Icons.CheckSquare className="w-5 h-5 text-indigo-600"/> Processados</h3>
                                                 <div className="flex items-center gap-2">
-                                                    <Icons.Calendar className="w-3 h-3 text-blue-500" />
-                                                    <input type="date" value={processadosDataFiltro} onChange={e=>setProcessadosDataFiltro(e.target.value)} className="text-[10px] border rounded p-1 focus:outline-none"/>
-                                                    <span className="bg-blue-200 text-blue-900 px-2 rounded-full font-bold text-[10px]">{processados.length}</span>
+                                                    <Icons.Calendar className="w-4 h-4 text-indigo-400" />
+                                                    <input type="date" value={processadosDataFiltro} onChange={e=>setProcessadosDataFiltro(e.target.value)} className="text-[10px] font-bold border-2 border-indigo-100 rounded-lg p-1.5 focus:outline-none focus:border-indigo-300 text-slate-700"/>
+                                                    <span className="bg-indigo-200/50 text-indigo-900 px-3 py-1 rounded-full font-black text-[10px] shadow-sm">{processados.length}</span>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <input value={processadoBusca} onChange={e=>setProcessadoBusca(e.target.value)} className="flex-1 text-[10px] border rounded p-1 focus:outline-none" placeholder="Lote..."/>
-                                                <select value={processadoBaseFiltro} onChange={e=>setProcessadoBaseFiltro(e.target.value)} className="text-[10px] border rounded p-1 focus:outline-none"><option value="">Todas Bases</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
+                                                <input value={processadoBusca} onChange={e=>setProcessadoBusca(e.target.value)} className="flex-1 text-xs font-bold border-2 border-indigo-50 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-300 transition-colors placeholder:text-indigo-300 uppercase" placeholder="BUSCAR LOTE..."/>
+                                                <select value={processadoBaseFiltro} onChange={e=>setProcessadoBaseFiltro(e.target.value)} className="text-xs font-bold border-2 border-indigo-50 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-300 text-slate-600 uppercase"><option value="">TODAS BASES</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-4 space-y-2 relative">
-                                            {processados.length > 150 && (
-                                                <div className="sticky top-0 z-10 text-center text-blue-800 bg-blue-100 p-2 rounded text-[10px] font-bold shadow-sm mb-2 opacity-90">
-                                                    ⚠️ Modo Rápido: Exibindo os 150 mais recentes de {processados.length}.<br/>Use a pesquisa acima para encontrar antigos.
-                                                </div>
-                                            )}
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/50 pb-28">
+                                            {processados.length === 0 && <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhum lote processado</div>}
                                             {processados.slice(0, 150).map(l=>(
-                                                <div key={l.id} className={`border p-3 rounded-lg flex justify-between items-center transition ${selectedIds.has(l.id)?'bg-blue-100 border-blue-400':'bg-white'}`}>
-                                                    <div className="flex gap-3 items-center">
-                                                        <input type="checkbox" checked={selectedIds.has(l.id)} onChange={()=>toggleSelection(l.id)} className="w-5 h-5 cursor-pointer"/>
+                                                <div key={l.id} className={`border-2 p-4 rounded-xl flex justify-between items-center transition-all ${selectedIds.has(l.id)?'bg-indigo-50 border-indigo-300 shadow-sm':'bg-white border-slate-100 hover:border-slate-300'}`}>
+                                                    <div className="flex gap-4 items-center">
+                                                        <input type="checkbox" checked={selectedIds.has(l.id)} onChange={()=>toggleSelection(l.id)} className="w-5 h-5 cursor-pointer text-indigo-600 rounded"/>
                                                         <div>
-                                                            <div className="font-mono font-bold text-lg uppercase">{l.codigo}</div>
-                                                            <div className="text-[9px] text-blue-600 font-bold uppercase">{l.baseSegmento}</div>
+                                                            <div className="font-mono font-black text-lg uppercase text-slate-800 tracking-wider leading-none mb-1">{l.codigo}</div>
+                                                            <div className="text-[9px] text-indigo-500 font-black uppercase tracking-widest">{l.baseSegmento}</div>
                                                         </div>
                                                     </div>
-                                                    <button onClick={()=>removerLote(l.id)} className="text-red-300 hover:text-red-600"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                    <button onClick={()=>removerLote(l.id)} className="text-rose-300 hover:text-rose-500 p-2 rounded-lg hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-5 h-5"/></button>
                                                 </div>
                                             ))}
-                                            {selectedIds.size > 0 && (
-                                                <div className="sticky bottom-0 bg-white p-3 border-t shadow-2xl space-y-3 z-20">
-                                                    <div className="flex gap-2">
-                                                        <input type="date" value={dataParaMover} onChange={e=>setDataParaMover(e.target.value)} className="flex-1 text-[10px] border rounded p-1 focus:outline-none" />
-                                                        <button onClick={moverLotesSelecionados} className="bg-orange-600 text-white font-bold px-3 py-1 rounded text-[10px] uppercase shadow-sm">Mover Data</button>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <select value={baseParaAlterar} onChange={e=>setBaseParaAlterar(e.target.value)} className="flex-1 text-[10px] border rounded p-1 focus:outline-none">
-                                                            <option value="">Nova Base...</option>
-                                                            {listaBases.map(b=><option key={b} value={b}>{b}</option>)}
-                                                        </select>
-                                                        <button onClick={alterarBaseSelecionados} className="bg-blue-600 text-white font-bold px-3 py-1 rounded text-[10px] uppercase shadow-sm">Mudar Base</button>
-                                                    </div>
-                                                    <button onClick={imprimirSelecionados} className="w-full bg-slate-800 text-white font-bold py-2 rounded text-[10px] uppercase shadow-sm flex items-center justify-center gap-2">
-                                                        <Icons.Printer className="w-3 h-3"/> Imprimir ({selectedIds.size})
-                                                    </button>
-                                                </div>
-                                            )}
                                         </div>
+                                        
+                                        {selectedIds.size > 0 && (
+                                            <div className="absolute bottom-0 left-0 w-full bg-white p-4 border-t-2 border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] space-y-3 z-20 animate-in slide-in-from-bottom-full">
+                                                <div className="flex gap-2">
+                                                    <input type="date" value={dataParaMover} onChange={e=>setDataParaMover(e.target.value)} className="flex-1 text-[10px] font-bold border-2 border-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-400 text-slate-700" />
+                                                    <button onClick={moverLotesSelecionados} className="bg-amber-500 hover:bg-amber-600 text-white font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow-md transition-colors">Mover Data</button>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <select value={baseParaAlterar} onChange={e=>setBaseParaAlterar(e.target.value)} className="flex-1 text-[10px] font-bold border-2 border-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-400 text-slate-700 uppercase">
+                                                        <option value="">NOVA BASE...</option>
+                                                        {listaBases.map(b=><option key={b} value={b}>{b}</option>)}
+                                                    </select>
+                                                    <button onClick={alterarBaseSelecionados} className="bg-indigo-500 hover:bg-indigo-600 text-white font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow-md transition-colors">Mudar Base</button>
+                                                </div>
+                                                <button onClick={imprimirSelecionados} className="w-full bg-slate-800 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 hover:bg-slate-900 transition-colors">
+                                                    <Icons.Printer className="w-4 h-4"/> Imprimir Seleção ({selectedIds.size})
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'monitoramento' && (
-                            <div className="space-y-6">
-                                <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-xl font-bold flex gap-2 items-center tracking-tight text-gray-700">
-                                            <Icons.Layers className="text-indigo-600"/> Produção Diária por Base
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                                        <h2 className="text-2xl font-black flex gap-3 items-center tracking-tight text-slate-800 uppercase">
+                                            <div className="p-2 bg-indigo-100 rounded-xl"><Icons.Layers className="text-indigo-600 w-6 h-6"/></div>
+                                            Produção Diária
                                         </h2>
-                                        <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase">Data Ref:</span>
-                                            <input type="date" value={dataMonitoramento} onChange={e => setDataMonitoramento(e.target.value)} className="text-xs font-bold bg-white border rounded px-2 py-1 focus:outline-none" />
+                                        <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Referência:</span>
+                                            <input type="date" value={dataMonitoramento} onChange={e => setDataMonitoramento(e.target.value)} className="text-xs font-bold bg-white border-2 border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-400 text-slate-700" />
                                         </div>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
                                         {statsPorBase.map((stat, idx) => (
-                                            <div key={idx} className="bg-gradient-to-br from-white to-gray-50 border p-4 rounded-xl shadow-sm flex flex-col items-center justify-center text-center hover:shadow-md transition">
-                                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.base.split('—')[0] || 'BASE'}</div>
-                                                <div className="text-[10px] font-black text-indigo-900 uppercase leading-tight h-8 flex items-center justify-center">{stat.base.split('—')[1] || stat.base}</div>
-                                                <div className="text-3xl font-black text-indigo-600 mt-2">{stat.count}</div>
-                                                <div className="text-[8px] text-gray-400 mt-1 uppercase">Lotes Gerados</div>
+                                            <div key={idx} className="bg-gradient-to-b from-white to-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center hover:shadow-lg hover:border-indigo-200 transition-all group">
+                                                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-indigo-400 transition-colors">{stat.base.split('—')[0] || 'BASE'}</div>
+                                                <div className="text-[10px] font-black text-slate-800 uppercase leading-tight h-8 flex items-center justify-center">{stat.base.split('—')[1] || stat.base}</div>
+                                                <div className="text-4xl font-black text-indigo-600 mt-3 drop-shadow-sm">{stat.count}</div>
+                                                <div className="text-[8px] text-slate-400 mt-2 uppercase tracking-widest font-bold bg-slate-200/50 px-2 py-1 rounded-md">Gerados</div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-                                    <h2 className="text-xl font-bold mb-6 flex gap-2 items-center tracking-tight text-gray-700">
-                                        <Icons.Activity className="text-red-600"/> Monitor de Atrasos (+10H)
+                                <div className="bg-white p-8 rounded-2xl shadow-xl border border-rose-100 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-red-500"></div>
+                                    <h2 className="text-2xl font-black mb-8 flex gap-3 items-center tracking-tight text-slate-800 uppercase">
+                                        <div className="p-2 bg-rose-100 rounded-xl"><Icons.Activity className="text-rose-600 w-6 h-6"/></div>
+                                        Monitor de Atrasos (+10H)
                                     </h2>
                                     {alertas.length > 0 ? (
                                         <div className="space-y-4">{alertas.map(l=>(
-                                            <div key={l.id} className="p-4 border-l-4 border-red-500 bg-red-50 flex justify-between items-center rounded-r-lg shadow-sm">
+                                            <div key={l.id} className="p-5 border-l-4 border-rose-500 bg-gradient-to-r from-rose-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center rounded-r-2xl shadow-sm border border-slate-100 gap-4">
                                                 <div>
-                                                    <div className="font-bold text-red-800 text-lg uppercase font-mono">{l.codigo}</div>
-                                                    <div className="text-xs text-red-600">Aguardando na base <strong>{l.baseSegmento}</strong> há {((now - l.timestampCriacao)/3600000).toFixed(1)}h</div>
+                                                    <div className="font-black text-rose-800 text-xl uppercase font-mono tracking-wider">{l.codigo}</div>
+                                                    <div className="text-xs font-semibold text-rose-600 mt-1 uppercase tracking-wider">Aguardando na base <strong className="bg-rose-200/50 px-1.5 rounded">{l.baseSegmento}</strong> há <span className="font-black text-rose-700">{((now - l.timestampCriacao)/3600000).toFixed(1)}h</span></div>
                                                 </div>
-                                                <button onClick={()=>mudarStatus(l.id,'impressao')} className="bg-red-600 text-white px-4 py-2 rounded font-bold text-xs shadow-md uppercase hover:bg-red-700 transition">Baixar Agora</button>
+                                                <button onClick={()=>mudarStatus(l.id,'impressao')} className="bg-rose-600 text-white px-6 py-3 rounded-xl font-black text-xs shadow-md uppercase tracking-wider hover:bg-rose-700 hover:shadow-lg transition-all active:scale-95 w-full sm:w-auto">Baixar Agora</button>
                                             </div>
                                         ))}</div>
-                                    ) : <div className="text-center p-12 text-gray-400">Nenhum lote com atraso crítico.</div>}
+                                    ) : <div className="text-center p-16 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold uppercase tracking-widest">Nenhum lote com atraso crítico.</div>}
                                 </div>
                             </div>
                         )}
 
+                        {}
                         {activeTab === 'relatorio' && (
-                            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                                <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row justify-between items-center gap-4">
-                                    <h2 className="font-bold text-gray-700 flex gap-2 items-center uppercase text-sm"><Icons.FileText className="w-5 h-5"/> Relatório Geral</h2>
-                                    <div className="flex gap-2 no-print">
-                                        <button onClick={exportarCSV} className="bg-gray-600 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-gray-700 transition">
-                                            <Icons.FileText className="w-3 h-3"/> CSV
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
+                                    <h2 className="font-black text-slate-800 flex gap-3 items-center uppercase text-lg tracking-tight">
+                                        <div className="p-2 bg-indigo-100 rounded-xl"><Icons.FileText className="w-6 h-6 text-indigo-600"/></div>
+                                        Relatório Geral
+                                    </h2>
+                                    <div className="flex flex-wrap justify-center gap-3 no-print">
+                                        <button onClick={exportarCSV} className="bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-slate-800 transition-colors shadow-md">
+                                            <Icons.FileText className="w-4 h-4"/> CSV
                                         </button>
-                                        <button onClick={exportarExcel} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-green-700 transition">
-                                            <Icons.List className="w-3 h-3"/> Excel
+                                        <button onClick={exportarExcel} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-emerald-700 transition-colors shadow-md">
+                                            <Icons.List className="w-4 h-4"/> Excel
                                         </button>
-                                        <button onClick={exportarPDF} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-red-700 transition">
-                                            <Icons.Download className="w-3 h-3"/> PDF
+                                        <button onClick={exportarPDF} className="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-rose-700 transition-colors shadow-md">
+                                            <Icons.Download className="w-4 h-4"/> PDF
                                         </button>
-                                        <button onClick={() => window.print()} className="bg-slate-700 text-white px-3 py-1 rounded text-xs font-bold flex gap-1 items-center hover:bg-slate-800 transition">
-                                            <Icons.Printer className="w-3 h-3"/> Imprimir
+                                        <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-black transition-colors shadow-md">
+                                            <Icons.Printer className="w-4 h-4"/> Imprimir
                                         </button>
                                     </div>
                                 </div>
-                                <div className="p-4 border-b space-y-2 no-print">
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                        <input value={filtroTexto} onChange={e=>setFiltroTexto(e.target.value)} className="border p-2 rounded text-xs focus:outline-none" placeholder="Lote..."/>
-                                        <select value={filtroBase} onChange={e=>setFiltroBase(e.target.value)} className="border p-2 rounded text-xs focus:outline-none"><option value="">Todas Bases</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
-                                        <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="border p-2 rounded text-xs focus:outline-none" />
-                                        <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="border p-2 rounded text-xs focus:outline-none" />
-                                        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="border p-2 rounded text-xs focus:outline-none"><option value="todos">Todos Status</option><option value="pendente">Pendente</option><option value="impressao">Processado</option></select>
+                                <div className="p-6 border-b border-slate-100 space-y-4 bg-white no-print">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                                        <input value={filtroTexto} onChange={e=>setFiltroTexto(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 uppercase focus:outline-none focus:border-indigo-400" placeholder="BUSCAR LOTE..."/>
+                                        <select value={filtroBase} onChange={e=>setFiltroBase(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 uppercase focus:outline-none focus:border-indigo-400"><option value="">TODAS BASES</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
+                                        <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-400" />
+                                        <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-400" />
+                                        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 uppercase focus:outline-none focus:border-indigo-400"><option value="todos">TODOS STATUS</option><option value="pendente">PENDENTE</option><option value="impressao">PROCESSADO</option></select>
                                     </div>
-                                    <div className="flex gap-4 items-center pt-2">
-                                        <div className="bg-white border px-3 py-1 rounded text-xs font-bold text-gray-600 uppercase">Total Exibido <span className="text-black ml-1 font-black">{lotes.length}</span></div>
-                                        <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded text-xs font-bold text-blue-700 uppercase tracking-tighter shadow-sm">Filtrados <span className="text-blue-900 ml-1 font-black">{lotesFiltradosRelatorio.length}</span></div>
+                                    <div className="flex flex-wrap gap-4 items-center pt-2 border-t border-slate-100">
+                                        <div className="bg-slate-100 px-4 py-2 rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest shadow-inner">Total Banco <span className="text-slate-800 ml-2 text-sm">{lotes.length}</span></div>
+                                        <div className="bg-indigo-100 px-4 py-2 rounded-lg text-[10px] font-black text-indigo-700 uppercase tracking-widest shadow-inner">Filtrados <span className="text-indigo-900 ml-2 text-sm">{lotesFiltradosRelatorio.length}</span></div>
                                     </div>
                                 </div>
                                 
                                 {lotesFiltradosRelatorio.length > 200 && (
-                                    <div className="bg-yellow-50 text-yellow-800 px-4 py-2 border-b text-center text-xs font-bold">
-                                        ⚠️ Modo Rápido: Exibindo apenas os 200 registros mais recentes. Para ver todos os {lotesFiltradosRelatorio.length} registros, faça a exportação (Excel/PDF) ou pesquise.
+                                    <div className="bg-amber-100/50 text-amber-800 px-6 py-3 border-b border-amber-200 text-center text-[10px] font-black uppercase tracking-widest">
+                                        ⚠️ Modo Rápido: Exibindo apenas os 200 mais recentes. Para ver todos os {lotesFiltradosRelatorio.length}, faça a exportação (Excel/PDF).
                                     </div>
                                 )}
 
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-[10px] text-left">
-                                        <thead className="bg-gray-100 border-b font-bold text-gray-600 uppercase tracking-wider">
-                                            <tr><th className="p-3">Data</th><th className="p-3">Lote</th><th className="p-3">Base</th><th className="p-3">Status</th><th className="p-3">Período</th><th className="p-3 text-right">Opções</th></tr>
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-slate-50 border-b border-slate-200 font-black text-slate-500 uppercase tracking-widest">
+                                            <tr>
+                                                <th className="p-4 whitespace-nowrap">Data</th>
+                                                <th className="p-4 whitespace-nowrap">Lote</th>
+                                                <th className="p-4 whitespace-nowrap">Base</th>
+                                                <th className="p-4 whitespace-nowrap">Status</th>
+                                                <th className="p-4 whitespace-nowrap">Período</th>
+                                                <th className="p-4 text-right whitespace-nowrap">Opções</th>
+                                            </tr>
                                         </thead>
-                                        <tbody className="divide-y">
+                                        <tbody className="divide-y divide-slate-100">
                                             {lotesFiltradosRelatorio.slice(0, 200).map(l=>(
-                                                <tr key={l.id} className="hover:bg-gray-50">
-                                                    <td className="p-3">{l.dataCriacao}</td>
-                                                    <td className="p-3 font-bold font-mono text-xs uppercase">{l.codigo}</td>
-                                                    <td className="p-3 uppercase text-gray-600">{l.baseSegmento}</td>
-                                                    <td className="p-3 uppercase font-bold text-indigo-700">{l.status}</td>
-                                                    <td className="p-3 uppercase text-gray-500 font-bold">{l.periodo}</td>
-                                                    <td className="p-3 text-right">
-                                                        <button onClick={()=>removerLote(l.id)} className="text-red-300 hover:text-red-500 transition"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                <tr key={l.id} className="hover:bg-indigo-50/30 transition-colors">
+                                                    <td className="p-4 font-semibold text-slate-600 whitespace-nowrap">{l.dataCriacao}</td>
+                                                    <td className="p-4 font-black font-mono text-sm uppercase tracking-wider text-slate-800 whitespace-nowrap">{l.codigo}</td>
+                                                    <td className="p-4 font-bold uppercase text-slate-500 text-[10px] tracking-widest whitespace-nowrap">{l.baseSegmento}</td>
+                                                    <td className="p-4">
+                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${l.status==='pendente'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700'}`}>
+                                                            {l.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 font-bold uppercase text-slate-400 text-[10px] tracking-widest whitespace-nowrap">{l.periodo}</td>
+                                                    <td className="p-4 text-right">
+                                                        <button onClick={()=>removerLote(l.id)} className="text-rose-300 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-4 h-4"/></button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -1037,40 +1191,46 @@
                             </div>
                         )}
 
+                        {}
                         {activeTab === 'consulta' && (
-                            <div className="max-w-xl mx-auto space-y-6">
-                                <div className="bg-white p-8 rounded-xl shadow border border-gray-200 text-center">
-                                    <h2 className="text-xl font-bold mb-4 text-gray-700 flex gap-2 justify-center items-center uppercase"><Icons.Search className="text-indigo-600"/> Consultar Lote</h2>
-                                    <input value={consultaTermo} onChange={e=>setConsultaTermo(e.target.value)} className="w-full p-4 border-2 rounded-xl text-center font-mono font-bold text-2xl uppercase bg-gray-50 focus:border-indigo-500 focus:outline-none transition-all shadow-inner" placeholder="BIPAR CÓDIGO..." autoFocus />
+                            <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
+                                    <h2 className="text-2xl font-black mb-6 text-slate-800 flex gap-3 justify-center items-center uppercase tracking-tight">
+                                        <div className="bg-indigo-100 p-2.5 rounded-2xl"><Icons.Search className="text-indigo-600 w-6 h-6"/></div> Consultar Lote
+                                    </h2>
+                                    <input value={consultaTermo} onChange={e=>setConsultaTermo(e.target.value)} className="w-full p-5 border-4 border-slate-100 rounded-2xl text-center font-mono font-black text-2xl uppercase bg-slate-50 focus:border-indigo-400 focus:bg-white focus:outline-none transition-all shadow-inner placeholder:text-slate-300 tracking-widest" placeholder="BIPAR CÓDIGO AQUI..." autoFocus />
                                 </div>
-                                <div className="space-y-4">
+                                
+                                <div className="space-y-6">
                                     {lotesConsulta.length > 50 && (
-                                        <div className="text-center text-gray-500 font-bold text-xs p-2">
-                                            ⚠️ Muitos resultados encontrados ({lotesConsulta.length}). Exibindo os 50 mais recentes para não travar.
+                                        <div className="text-center text-amber-600 font-bold text-xs p-3 bg-amber-50 rounded-xl uppercase tracking-widest">
+                                            ⚠️ Muitos resultados ({lotesConsulta.length}). Exibindo 50 mais recentes.
                                         </div>
                                     )}
                                     {lotesConsulta.slice(0, 50).map(l=>(
-                                        <div key={l.id} className="p-6 border rounded-xl bg-white shadow-md border-indigo-100 animate-in fade-in zoom-in duration-300">
-                                            <div className="flex justify-between items-start border-b pb-4 mb-4">
+                                        <div key={l.id} className="p-8 border-2 border-indigo-50 rounded-3xl bg-white shadow-lg hover:shadow-xl transition-shadow animate-in fade-in zoom-in-95 duration-300">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-50 pb-6 mb-6 gap-4">
                                                 <div>
-                                                    <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Lote</span>
-                                                    <div className="text-3xl font-black text-slate-800 font-mono tracking-tighter uppercase">{l.codigo}</div>
+                                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-2 bg-slate-100 px-2 py-1 rounded w-max">Código Lote</span>
+                                                    <div className="text-3xl sm:text-4xl font-black text-indigo-900 font-mono tracking-tighter uppercase">{l.codigo}</div>
                                                 </div>
-                                                <div className={`px-4 py-1 rounded-full text-[10px] font-bold text-white uppercase shadow-sm ${l.status==='pendente'?'bg-orange-500':'bg-green-600'}`}>{l.status}</div>
+                                                <div className={`px-5 py-2 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-md ${l.status==='pendente'?'bg-amber-500':'bg-emerald-500'}`}>{l.status}</div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-y-4 text-xs">
-                                                <div><span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Base / Segmento</span><div className="font-bold text-slate-700 uppercase">{l.baseSegmento}</div></div>
-                                                <div><span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Data de Criação</span><div className="font-bold text-slate-700">{l.dataCriacao} às {l.horaCriacao}</div></div>
-                                                <div><span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Período</span><div className="font-bold text-indigo-600 uppercase">{l.periodo}</div></div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 text-xs">
+                                                <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Segmento</span><div className="font-black text-slate-700 uppercase bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.baseSegmento}</div></div>
+                                                <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Data Inserção</span><div className="font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.dataCriacao} <span className="opacity-50">às</span> {l.horaCriacao}</div></div>
+                                                <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Turno</span><div className="font-black text-indigo-600 uppercase bg-indigo-50 p-2 rounded-lg border border-indigo-100 text-center">{l.periodo}</div></div>
                                             </div>
-                                            <div className="mt-6 pt-4 border-t">
-                                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-3">Histórico de Eventos</div>
-                                                <div className="space-y-2">
+                                            <div className="mt-8 pt-6 border-t-2 border-slate-50">
+                                                <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4 flex items-center gap-2"><Icons.Activity className="w-4 h-4"/> Timeline do Lote</div>
+                                                <div className="space-y-3 pl-2 border-l-2 border-slate-200 ml-2">
                                                     {(l.historico || []).map((h, i) => (
-                                                        <div key={i} className="flex gap-3 text-[10px] items-center">
-                                                            <span className="text-gray-400 font-mono">{h.data}</span>
-                                                            <span className="font-black uppercase tracking-tight text-slate-600">{h.status}</span>
-                                                            <span className="text-gray-500 italic">- {h.detalhe}</span>
+                                                        <div key={i} className="flex flex-col sm:flex-row sm:gap-4 text-xs items-start sm:items-center relative">
+                                                            <div className="absolute w-2 h-2 bg-slate-300 rounded-full -left-[13px] top-1.5 sm:top-auto border-2 border-white"></div>
+                                                            <span className="text-slate-400 font-mono font-bold whitespace-nowrap mb-1 sm:mb-0 text-[10px]">{h.data}</span>
+                                                            <span className="font-black uppercase tracking-widest text-slate-700 px-2 py-0.5 bg-slate-100 rounded text-[10px]">{h.status}</span>
+                                                            <span className="text-slate-500 font-medium italic text-[11px] mt-1 sm:mt-0">{h.detalhe}</span>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1081,39 +1241,40 @@
                             </div>
                         )}
 
+                        {}
                         {activeTab === 'admin' && (
-                            <div className="max-w-3xl mx-auto space-y-6">
-                                <div className="bg-white p-8 rounded-xl shadow border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-6 pb-4 border-b">
-                                        <div className="bg-indigo-100 p-3 rounded-full"><Icons.Settings className="w-6 h-6 text-indigo-700"/></div>
+                            <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 mb-8 pb-6 border-b border-slate-100">
+                                        <div className="bg-indigo-100 p-4 rounded-2xl shadow-inner"><Icons.Settings className="w-8 h-8 text-indigo-600"/></div>
                                         <div>
-                                            <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Gestão de Bases e Segmentos</h2>
-                                            <p className="text-xs text-gray-500 mt-1 font-medium">Adicione novas bases para expandir o sistema sem precisar alterar o código.</p>
+                                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Gestão de Bases</h2>
+                                            <p className="text-sm text-slate-500 mt-2 font-medium">Adicione novas bases para expandir o sistema dinamicamente.</p>
                                         </div>
                                     </div>
 
-                                    <div className="bg-gray-50 p-6 rounded-xl border mb-8 shadow-inner">
-                                        <h3 className="text-xs font-bold text-gray-600 uppercase mb-4">Adicionar Nova Base</h3>
-                                        <div className="flex flex-col md:flex-row gap-3">
-                                            <input value={novaBaseAdmin} onChange={(e) => setNovaBaseAdmin(e.target.value)} placeholder="Ex: 799-00 — NOVA BASE - UF" className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 uppercase font-bold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition outline-none text-sm shadow-sm" />
-                                            <button onClick={adicionarNovaBaseAdmin} className="bg-indigo-600 text-white font-black px-8 py-3 rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition uppercase text-xs tracking-wider">Salvar Base</button>
+                                    <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-200 mb-10 shadow-inner">
+                                        <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-5">Adicionar Nova Base</h3>
+                                        <div className="flex flex-col md:flex-row gap-4">
+                                            <input value={novaBaseAdmin} onChange={(e) => setNovaBaseAdmin(e.target.value)} placeholder="EX: 799-00 — NOVA BASE - UF" className="flex-1 border-2 border-slate-300 rounded-xl px-5 py-4 uppercase font-black focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm placeholder:text-slate-400 bg-white" />
+                                            <button onClick={adicionarNovaBaseAdmin} className="bg-indigo-600 text-white font-black px-10 py-4 rounded-xl hover:bg-indigo-700 shadow-lg hover:shadow-xl transition-all uppercase text-xs tracking-widest active:scale-95">Salvar Base</button>
                                         </div>
-                                        <p className="text-[10px] text-gray-400 mt-2 font-medium">Siga o padrão sugerido: <span className="font-mono bg-white px-1 border rounded">CODIGO — NOME - UF</span></p>
+                                        <p className="text-[10px] text-slate-400 mt-3 font-bold uppercase tracking-widest flex items-center gap-2">Padrão Sugerido: <span className="font-mono bg-white px-2 py-1 border rounded-md text-slate-600 shadow-sm">CODIGO — NOME - UF</span></p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                                         <div>
-                                            <h3 className="font-bold text-gray-700 mb-4 text-xs uppercase flex items-center justify-between border-b pb-2">
-                                                Bases Personalizadas <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px]">{basesExtras.length}</span>
+                                            <h3 className="font-black text-slate-800 mb-5 text-sm uppercase flex items-center justify-between border-b-2 border-slate-100 pb-3 tracking-widest">
+                                                Personalizadas <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-[10px] shadow-sm">{basesExtras.length}</span>
                                             </h3>
                                             {basesExtras.length === 0 ? (
-                                                <div className="text-center p-8 border-2 border-dashed rounded-xl text-gray-400 text-xs font-medium">Nenhuma base extra adicionada.<br/>Use o campo acima para expandir.</div>
+                                                <div className="text-center p-10 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-bold uppercase tracking-widest bg-slate-50/50">Nenhuma base extra adicionada.</div>
                                             ) : (
-                                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                                                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                                     {basesExtras.map(b => (
-                                                        <div key={b.id} className="flex justify-between items-center p-3 border rounded-lg bg-white shadow-sm hover:border-indigo-300 transition group">
-                                                            <span className="font-bold text-[11px] uppercase text-gray-700">{b.nome}</span>
-                                                            <button onClick={() => removerBaseExtraAdmin(b.id, b.nome)} className="text-gray-300 hover:text-red-500 p-1 rounded transition bg-gray-50 hover:bg-red-50" title="Remover esta base"><Icons.Trash2 className="w-4 h-4" /></button>
+                                                        <div key={b.id} className="flex justify-between items-center p-4 border-2 border-slate-100 rounded-xl bg-white shadow-sm hover:border-indigo-300 transition-all group">
+                                                            <span className="font-black text-[11px] uppercase text-slate-700 tracking-wider">{b.nome}</span>
+                                                            <button onClick={() => removerBaseExtraAdmin(b.id, b.nome)} className="text-rose-300 hover:text-white hover:bg-rose-500 p-2 rounded-lg transition-colors shadow-sm bg-rose-50" title="Remover Base"><Icons.Trash2 className="w-4 h-4" /></button>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1121,13 +1282,13 @@
                                         </div>
 
                                         <div>
-                                            <h3 className="font-bold text-gray-700 mb-4 text-xs uppercase flex items-center justify-between border-b pb-2">
-                                                Bases Padrão (Sistema) <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-[10px]">{LISTA_PADRAO.length}</span>
+                                            <h3 className="font-black text-slate-800 mb-5 text-sm uppercase flex items-center justify-between border-b-2 border-slate-100 pb-3 tracking-widest">
+                                                Padrão do Sistema <span className="bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[10px] shadow-sm">{LISTA_PADRAO.length}</span>
                                             </h3>
-                                            <div className="bg-gray-50 p-3 rounded-xl border">
-                                                <div className="grid grid-cols-1 gap-1 max-h-[300px] overflow-y-auto">
+                                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-inner">
+                                                <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                                                     {LISTA_PADRAO.map(b => (
-                                                        <div key={b} className="text-[10px] font-bold text-gray-500 bg-white border px-3 py-2 rounded shadow-sm truncate">{b}</div>
+                                                        <div key={b} className="text-[10px] font-black tracking-widest text-slate-500 bg-white border border-slate-200 px-4 py-3 rounded-lg shadow-sm truncate">{b}</div>
                                                     ))}
                                                 </div>
                                             </div>
@@ -1138,7 +1299,7 @@
                         )}
                     </main>
 
-                    {/* AREA DE IMPRESSAO */}
+                    {}
                     <div id="area-impressao-etiquetas" className="hidden">
                         {Object.entries(
                             lotesParaImprimir.reduce((acc, l) => {
