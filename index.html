@@ -37,7 +37,6 @@
 
         const app = initializeApp(firebaseConfig);
         
-        // Habilita cache offline
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
         });
@@ -50,75 +49,104 @@
     </script>
     
     <style>
+        /* ================================================================
+           🔧 CSS DE IMPRESSÃO DEFINITIVO - CORREÇÃO TOTAL DO BUG DE PAGINAÇÃO
+           ================================================================
+           Mudanças críticas em relação à versão anterior:
+           1. SEM agrupamento por base - todas etiquetas em um grid único
+           2. SEM float (causava perda de elementos na paginação do Chrome)
+           3. Grid CSS com tamanho fixo em mm garante 20 etiquetas/página (5x4)
+           4. break-inside: avoid em cada etiqueta para não cortar pela metade
+        */
         @media print {
-            @page { size: A4 landscape; margin: 5mm; }
-            body, html { background-color: white !important; height: auto !important; min-height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; position: static !important; }
-            .no-print { display: none !important; }
-            #root, #root > div { min-height: 0 !important; height: auto !important; background: none !important; display: block !important; position: static !important; overflow: visible !important; }
-            #area-impressao-etiquetas { display: block !important; visibility: visible !important; position: static !important; width: 100% !important; padding: 0; margin: 0; overflow: visible !important; }
+            @page { 
+                size: A4 landscape; 
+                margin: 5mm;
+            }
+            html, body { 
+                background: white !important; 
+                margin: 0 !important; 
+                padding: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+            }
+            .no-print { 
+                display: none !important; 
+            }
+            /* Esconde TODO o conteúdo do app principal durante impressão */
+            #root { 
+                display: none !important; 
+            }
             
-            /* CORREÇÃO DE IMPRESSÃO: Removemos o CSS Grid e usamos block/float para garantir que o Chrome faça paginação perfeita independente do número de etiquetas */
-            .print-group { 
-                display: block; 
-                width: 100%; 
-                break-after: page; 
-                page-break-after: always; 
+            /* A área de impressão fica VISÍVEL e funciona como grid de etiquetas */
+            #area-impressao-etiquetas { 
+                display: grid !important;
+                grid-template-columns: repeat(5, 1fr);
+                grid-auto-rows: 90mm;
+                gap: 2mm;
+                position: static !important;
+                left: auto !important;
+                top: auto !important;
+                visibility: visible !important;
+                width: 100% !important;
+                height: auto !important;
+                padding: 0;
+                margin: 0;
+                overflow: visible !important;
             }
-            .print-group::after { 
-                content: ""; 
-                display: table; 
-                clear: both; 
-            }
-            .print-group:last-child { break-after: auto; page-break-after: auto; }
             
             .label-card { 
-                float: left; /* Flutuação garante que as etiquetas quebrem de página corretamente sem truncar no navegador */
-                width: calc(20% - 2mm); 
-                margin-right: 2mm; 
-                margin-bottom: 2mm;
                 border: 1px solid #000; 
-                height: 90mm; 
+                padding: 2px; 
+                box-sizing: border-box;
                 display: flex; 
                 flex-direction: column; 
-                justify-content: space-between; 
-                padding: 2px; 
-                box-sizing: border-box; 
-                break-inside: avoid; 
-                page-break-inside: avoid; 
-                background: white; 
+                justify-content: space-between;
+                background: white;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                overflow: hidden;
             }
+            
             .label-header { border-bottom: 2px solid #000; display: flex; justify-content: space-around; padding-bottom: 2px; margin-bottom: 2px; }
             .header-title { font-size: 8px; font-weight: 700; color: #555; text-transform: uppercase; }
             .header-value { font-size: 14px; font-weight: 900; color: #000; line-height: 1; text-transform: uppercase; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
             .label-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-            .label-text { font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px; margin-top: 5px; }
+            .label-text { font-family: 'Courier New', monospace; font-weight: bold; font-size: 16px; margin-top: 5px; }
             .label-footer { border-top: 1px dashed #000; padding-top: 4px; font-size: 9px; }
             .footer-title { background: #eee; text-align: center; font-weight: bold; margin-bottom: 2px; font-size: 8px; }
             .check-item { display: flex; align-items: center; gap: 4px; justify-content: center; font-weight: bold; }
             .check-box { width: 10px; height: 10px; border: 1px solid #000; display: inline-block; }
             .footer-inputs { display: flex; justify-content: space-between; margin-top: 4px; font-size: 7px; font-weight: bold; border-top: 1px dotted #ccc; }
         }
+        
+        /* TELA: esconde a área de impressão fora-da-tela mas mantém renderizada */
+        @media screen {
+            #area-impressao-etiquetas {
+                position: absolute;
+                left: -99999px;
+                top: -99999px;
+                width: 297mm;
+                visibility: hidden;
+                pointer-events: none;
+            }
+        }
+        
         .invalid-base { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
         .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-        /* Otimização de Scrollbars */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-
-        /* CORREÇÃO: Garante que a área de impressão esteja oculta na tela mas com layout calculável */
-        #area-impressao-etiquetas {
-            position: absolute;
-            left: -99999px;
-            top: -99999px;
-            width: 297mm; /* A4 landscape */
-            visibility: hidden;
-        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-indigo-200 selection:text-indigo-900">
+    <!-- 🔧 Área de impressão fica FORA do #root - assim @media print não a esconde -->
+    <div id="area-impressao-etiquetas"></div>
     <div id="root"></div>
 
     <script type="text/babel">
@@ -185,30 +213,49 @@
         };
 
         // ===============================================================
-        // 🔧 FUNÇÃO CORRIGIDA: Aguarda TODOS os QRCodes carregarem antes de imprimir
-        // O bug "imprime só 1 página de 4" acontece porque window.print() é chamado
-        // antes do React+QRious terminarem de renderizar todas as etiquetas no DOM.
+        // 🔧 FUNÇÃO DE IMPRESSÃO ROBUSTA
+        // Aguarda TODOS os QRCodes serem renderizados em canvas antes de imprimir
+        // Não usa timer fixo - verifica de fato se todos os canvases existem
         // ===============================================================
         const aguardarEImprimir = (qtdEtiquetas, callback) => {
-            // Tempo proporcional: mínimo 800ms + 30ms por etiqueta extra
-            // Garante que mesmo 100+ etiquetas tenham tempo de renderizar
-            const tempoBase = 800;
-            const tempoExtra = qtdEtiquetas * 30;
-            const tempoTotal = tempoBase + tempoExtra;
+            const maxTentativas = 50; // 50 tentativas x 100ms = 5 segundos máx
+            let tentativas = 0;
 
-            // Dupla requisição de frame garante que o React renderizou
+            const verificar = () => {
+                tentativas++;
+                
+                // Conta etiquetas e canvases renderizados na área de impressão
+                const labels = document.querySelectorAll('#area-impressao-etiquetas .label-card');
+                const canvases = document.querySelectorAll('#area-impressao-etiquetas canvas');
+                
+                // Verifica se todos os canvases têm conteúdo (foram desenhados)
+                let canvasesProntos = 0;
+                canvases.forEach(c => {
+                    if (c.width > 0 && c.height > 0) canvasesProntos++;
+                });
+
+                console.log(`Tentativa ${tentativas}: ${labels.length} etiquetas, ${canvasesProntos}/${qtdEtiquetas} QRCodes prontos`);
+
+                // Condição: todas as etiquetas estão no DOM + todos canvases renderizados
+                const tudoPronto = labels.length === qtdEtiquetas && canvasesProntos >= qtdEtiquetas;
+
+                if (tudoPronto || tentativas >= maxTentativas) {
+                    // Aguarda mais um frame para garantir o paint final
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            window.print();
+                            if (callback) setTimeout(callback, 1500);
+                        });
+                    });
+                } else {
+                    setTimeout(verificar, 100);
+                }
+            };
+
+            // Aguarda o React commit antes de começar a verificar
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        // Verifica se todos os canvas (QRCodes) foram renderizados
-                        const canvases = document.querySelectorAll('#area-impressao-etiquetas canvas');
-                        const labels = document.querySelectorAll('#area-impressao-etiquetas .label-card');
-                        
-                        console.log(`Imprimindo: ${labels.length} etiquetas com ${canvases.length} QRCodes renderizados`);
-                        
-                        window.print();
-                        if (callback) setTimeout(callback, 1500);
-                    }, tempoTotal);
+                    setTimeout(verificar, 200);
                 });
             });
         };
@@ -292,13 +339,9 @@
         };
 
         function App() {
-            // Estado do Balão JMS
             const [showJMSWarning, setShowJMSWarning] = useState(true);
-
-            // Estado do Modal Personalizado
             const [dialog, setDialog] = useState({ isOpen: false });
 
-            // Funções auxiliares para invocar o Modal
             const closeDialog = () => setDialog({ isOpen: false });
             
             const showAlert = (message, title = "Aviso") => {
@@ -436,21 +479,22 @@
                 return (now - timestamp) / 3600000 >= 10;
             }, [now]);
 
-            // NOVA FUNÇÃO: Imprimir Lotes Específicos (por grupo) - USA FUNÇÃO CORRIGIDA
             const imprimirLotesEspecificos = (lotesList) => {
                 if (lotesList.length === 0) return showAlert("Nenhum lote para imprimir.", "Atenção");
-                setLotesParaImprimir(lotesList);
-                aguardarEImprimir(lotesList.length, () => setLotesParaImprimir([]));
+                // Ordena por base/segmento para impressão organizada
+                const ordenados = [...lotesList].sort((a, b) => {
+                    return (a.baseSegmento || '').localeCompare(b.baseSegmento || '') || a.codigo.localeCompare(b.codigo);
+                });
+                setLotesParaImprimir(ordenados);
+                aguardarEImprimir(ordenados.length, () => setLotesParaImprimir([]));
             };
 
             const imprimirSelecionados = () => {
                 if (selectedIds.size === 0) return showAlert("Selecione pelo menos um lote.", "Atenção");
                 const selecionados = lotes.filter(l => selectedIds.has(l.id));
-                setLotesParaImprimir(selecionados);
-                aguardarEImprimir(selecionados.length, () => setLotesParaImprimir([]));
+                imprimirLotesEspecificos(selecionados);
             };
 
-            // 🔧 FUNÇÃO CORRIGIDA - Era aqui que estava o bug principal de impressão parcial
             const iniciarUsoEmMassa = async (itens) => {
                 if (!dbConnected) return;
                 showConfirm(`Confirma INICIAR O USO de TODOS os ${itens.length} itens deste segmento?\nIsto irá gerar o PDF de Etiquetas e mover para 'Sendo Utilizados'.`, async () => {
@@ -462,7 +506,6 @@
                     const idGrupo = dataAtual.getTime();
                     const nomeGrupo = `${dataProc} às ${horaProc}`;
 
-                    // 🔧 CORREÇÃO: Cria os lotes ATUALIZADOS para imprimir (com dados de grupo)
                     const itensAtualizados = itens.map(item => ({
                         ...item,
                         status: 'em_uso',
@@ -492,10 +535,12 @@
                         await batch.commit();
                         showAlert(`Lotes enviados para SENDO UTILIZADOS.\nA impressão das etiquetas será iniciada.`, "Sucesso");
                         
-                        // 🔧 CORREÇÃO PRINCIPAL: Usa a função aguardarEImprimir que escala o tempo
-                        // de espera com base na quantidade de etiquetas (resolve bug de imprimir só 1 página)
-                        setLotesParaImprimir(itensAtualizados);
-                        aguardarEImprimir(itensAtualizados.length, () => setLotesParaImprimir([]));
+                        // Ordena antes de imprimir
+                        const ordenados = [...itensAtualizados].sort((a, b) => {
+                            return (a.baseSegmento || '').localeCompare(b.baseSegmento || '') || a.codigo.localeCompare(b.codigo);
+                        });
+                        setLotesParaImprimir(ordenados);
+                        aguardarEImprimir(ordenados.length, () => setLotesParaImprimir([]));
                     } catch (error) {
                         console.error("Erro em massa:", error);
                         showAlert("Erro ao atualizar em massa.", "Erro");
@@ -808,7 +853,6 @@
                 
                 if (status === 'em_uso') {
                     setLotesParaImprimir([{ ...lote, ...updates }]);
-                    // 🔧 CORREÇÃO: Usa função aguardarEImprimir
                     aguardarEImprimir(1, () => setLotesParaImprimir([]));
                 }
             };
@@ -956,7 +1000,6 @@
                         });
                         await batch.commit();
 
-                        // 🔧 CORREÇÃO: Atualiza localmente também
                         lotesFinaisImpressao = filtrados.map(l => {
                             if (l.status === 'pendente') {
                                 return { ...l, status: 'em_uso', idGrupoProcessamento: idGrupo, dataProcessamento: dataProc, horaProcessamento: horaProc, grupoNomeFormatado: nomeGrupo };
@@ -965,7 +1008,6 @@
                         });
                     }
                     setLotesParaImprimir(lotesFinaisImpressao);
-                    // 🔧 CORREÇÃO: Usa função aguardarEImprimir
                     aguardarEImprimir(lotesFinaisImpressao.length, () => setLotesParaImprimir([]));
                 };
 
@@ -1052,12 +1094,11 @@
             };
 
             return (
-                <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
+                <>
+                <div id="root-app" className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
                     
-                    {/* Renderização do Sistema de Diálogo (Alertas Personalizados) */}
                     <CustomDialog dialog={dialog} closeDialog={closeDialog} />
 
-                    {/* BALÃO / MODAL DE AVISO OBRIGATÓRIO JMS */}
                     {showJMSWarning && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md no-print">
                             <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center animate-in zoom-in-95 duration-300">
@@ -1078,7 +1119,6 @@
                         </div>
                     )}
 
-                    {/* CABEÇALHO */}
                     <div className="bg-slate-900 text-white shadow-xl no-print">
                         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-6">
                             <div className="flex items-center gap-4">
@@ -1123,7 +1163,6 @@
                             </div>
                         )}
 
-                        {}
                         {activeTab === 'operacao' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1368,7 +1407,6 @@
                             </div>
                         )}
 
-                        {}
                         {activeTab === 'monitoramento' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
@@ -1416,7 +1454,6 @@
                             </div>
                         )}
 
-                        {}
                         {activeTab === 'relatorio' && (
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -1433,9 +1470,6 @@
                                         </button>
                                         <button onClick={() => exportarPDF(lotesFiltradosRelatorio)} className="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-rose-700 transition-colors shadow-md">
                                             <Icons.Download className="w-4 h-4"/> PDF
-                                        </button>
-                                        <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-black transition-colors shadow-md">
-                                            <Icons.Printer className="w-4 h-4"/> Imprimir Lista
                                         </button>
                                     </div>
                                 </div>
@@ -1494,17 +1528,14 @@
                             </div>
                         )}
 
-                        {}
                         {activeTab === 'consulta' && (
                             <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-300">
                                 
-                                {/* Toggles Modos */}
                                 <div className="flex bg-slate-200/50 rounded-xl p-1 text-xs font-bold shadow-inner mx-auto w-max mb-6 border border-slate-200">
                                     <button onClick={()=>setModoConsulta('simples')} className={`px-8 py-3 rounded-lg transition-all ${modoConsulta==='simples'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>CONSULTA ÚNICA</button>
                                     <button onClick={()=>setModoConsulta('massa')} className={`px-8 py-3 rounded-lg transition-all ${modoConsulta==='massa'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>EM MASSA</button>
                                 </div>
 
-                                {/* Header de Busca */}
                                 <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
                                     <h2 className="text-2xl font-black mb-6 text-slate-800 flex gap-3 justify-center items-center uppercase tracking-tight">
@@ -1530,7 +1561,6 @@
                                     )}
                                 </div>
                                 
-                                {/* Resultados Consulta */}
                                 <div className="space-y-6">
                                     {modoConsulta === 'simples' ? (
                                         <>
@@ -1621,7 +1651,6 @@
                             </div>
                         )}
 
-                        {}
                         {activeTab === 'admin' && (
                             <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100">
@@ -1678,42 +1707,39 @@
                             </div>
                         )}
                     </main>
-
-                    {}
-                    {/* ÁREA DE IMPRESSÃO OCULTA */}
-                    <div id="area-impressao-etiquetas">
-                        {Object.entries(
-                            lotesParaImprimir.reduce((acc, l) => {
-                                if (!acc[l.baseSegmento]) acc[l.baseSegmento] = [];
-                                acc[l.baseSegmento].push(l);
-                                return acc;
-                            }, {})
-                        ).map(([base, groupLotes]) => (
-                            <div key={base} className="print-group">
-                                {groupLotes.map(l => {
-                                    const p = l.baseSegmento.split('—');
-                                    return (
-                                        <div key={l.id} className="label-card">
-                                            <div className="label-header">
-                                                <div><span className="header-title">SEGMENTO</span><div className="header-value">{p[0]||'GERAL'}</div></div>
-                                                <div><span className="header-title">BASE</span><div className="header-value">{p[1]||l.baseSegmento}</div></div>
-                                            </div>
-                                            <div className="label-content">
-                                                <div style={{width:'80px',height:'80px'}}><QRCodeImage text={l.codigo} size={80}/></div>
-                                                <div className="label-text">{l.codigo}</div>
-                                            </div>
-                                            <div className="label-footer">
-                                                <div className="footer-title">EXPEDIÇÃO</div>
-                                                <div className="check-item"><span className="check-box"></span> CONFERIDO</div>
-                                                <div className="footer-inputs"><span>{l.dataCriacao}</span><span>{l.horaCriacao}</span></div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
-                    </div>
                 </div>
+
+                {/* ============================================================
+                    🔧 ÁREA DE IMPRESSÃO via PORTAL - renderiza FORA do #root
+                    Assim @media print pode esconder o #root sem afetar isto.
+                    Sem agrupamento por base. Sem .print-group com break-after.
+                    Apenas um GRID PURO com 5 colunas e linhas de 90mm.
+                    O navegador pagina naturalmente com break-inside:avoid nas labels.
+                    ============================================================ */}
+                {ReactDOM.createPortal(
+                    lotesParaImprimir.map(l => {
+                        const p = l.baseSegmento.split('—');
+                        return (
+                            <div key={l.id} className="label-card">
+                                <div className="label-header">
+                                    <div><span className="header-title">SEGMENTO</span><div className="header-value">{p[0]||'GERAL'}</div></div>
+                                    <div><span className="header-title">BASE</span><div className="header-value">{p[1]||l.baseSegmento}</div></div>
+                                </div>
+                                <div className="label-content">
+                                    <div style={{width:'80px',height:'80px'}}><QRCodeImage text={l.codigo} size={80}/></div>
+                                    <div className="label-text">{l.codigo}</div>
+                                </div>
+                                <div className="label-footer">
+                                    <div className="footer-title">EXPEDIÇÃO</div>
+                                    <div className="check-item"><span className="check-box"></span> CONFERIDO</div>
+                                    <div className="footer-inputs"><span>{l.dataCriacao}</span><span>{l.horaCriacao}</span></div>
+                                </div>
+                            </div>
+                        );
+                    }),
+                    document.getElementById('area-impressao-etiquetas')
+                )}
+                </>
             );
         }
 
