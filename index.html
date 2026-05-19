@@ -78,6 +78,7 @@
         ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-indigo-200 selection:text-indigo-900">
@@ -295,7 +296,12 @@
             const [baseParaAlterar, setBaseParaAlterar] = useState('');
 
             const [dataMonitoramento, setDataMonitoramento] = useState(getTodayISO());
+            
+            /* NOVOS ESTADOS PARA CONSULTA E EXCLUSÃO EM MASSA */
+            const [modoConsulta, setModoConsulta] = useState('simples'); // 'simples' ou 'massa'
             const [consultaTermo, setConsultaTermo] = useState('');
+            const [consultaMassaTexto, setConsultaMassaTexto] = useState('');
+
             const [now, setNow] = useState(Date.now());
 
             const SENHA_MESTRA = "JT@2026";
@@ -442,16 +448,25 @@
                     .sort((a, b) => b.count - a.count);
             }, [lotes, dataMonitoramento, listaBases, deletingIds]);
 
+            /* LOGICA ATUALIZADA: MÚLTIPLAS CONSULTAS */
             const lotesConsulta = useMemo(() => {
-                if (!consultaTermo) return [];
-                const term = consultaTermo.toUpperCase();
-                return lotes.filter(l => !deletingIds.has(l.id) && l.codigo.includes(term));
-            }, [lotes, consultaTermo, deletingIds]);
+                if (modoConsulta === 'simples') {
+                    if (!consultaTermo) return [];
+                    const term = consultaTermo.toUpperCase();
+                    return lotes.filter(l => !deletingIds.has(l.id) && l.codigo.includes(term));
+                } else {
+                    if (!consultaMassaTexto.trim()) return [];
+                    // Permite separar por nova linha ou vírgula
+                    const terms = consultaMassaTexto.toUpperCase().split(/[\r\n,]+/).map(t => t.trim()).filter(Boolean);
+                    return lotes.filter(l => !deletingIds.has(l.id) && terms.includes(l.codigo));
+                }
+            }, [lotes, consultaTermo, consultaMassaTexto, modoConsulta, deletingIds]);
 
-            const exportarCSV = () => {
-                if (lotesFiltradosRelatorio.length === 0) return showAlert("Nada para exportar", "Atenção");
+            // Export functions now accept an optional "dados" parameter to allow exporting mass search results
+            const exportarCSV = (dados = lotesFiltradosRelatorio) => {
+                if (dados.length === 0) return showAlert("Nada para exportar", "Atenção");
                 const cabecalho = "Data;Lote;Base;Status;Periodo;Hora";
-                const linhas = lotesFiltradosRelatorio.map(l => `${l.dataCriacao};${l.codigo};${l.baseSegmento};${l.status};${l.periodo};${l.horaCriacao}`);
+                const linhas = dados.map(l => `${l.dataCriacao};${l.codigo};${l.baseSegmento};${l.status};${l.periodo};${l.horaCriacao}`);
                 const csvContent = "data:text/csv;charset=utf-8," + [cabecalho, ...linhas].join("\n");
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
@@ -462,9 +477,9 @@
                 document.body.removeChild(link);
             };
 
-            const exportarExcel = () => {
-                if (lotesFiltradosRelatorio.length === 0) return showAlert("Nada para exportar", "Atenção");
-                const dadosFormatados = lotesFiltradosRelatorio.map(l => ({
+            const exportarExcel = (dados = lotesFiltradosRelatorio) => {
+                if (dados.length === 0) return showAlert("Nada para exportar", "Atenção");
+                const dadosFormatados = dados.map(l => ({
                     "Data Criação": l.dataCriacao, "Hora": l.horaCriacao, "Código Lote": l.codigo,
                     "Base/Segmento": l.baseSegmento, "Status": l.status, "Período": l.periodo
                 }));
@@ -475,15 +490,16 @@
                 XLSX.writeFile(workbook, `relatorio_lotes_${getTodayISO()}.xlsx`);
             };
 
-            const exportarPDF = () => {
-                if (lotesFiltradosRelatorio.length === 0) return showAlert("Nada para exportar", "Atenção");
+            const exportarPDF = (dados = lotesFiltradosRelatorio) => {
+                if (dados.length === 0) return showAlert("Nada para exportar", "Atenção");
                 if (!window.jspdf) return showAlert("Biblioteca PDF não carregou.", "Erro");
                 const doc = new window.jspdf.jsPDF();
                 doc.setFontSize(16); doc.text("Relatório de Sistema de Lotes", 14, 20);
                 doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
-                doc.text(`Filtros: ${filtroTexto || 'Nenhum'} | Base: ${filtroBase || 'Todas'} | Status: ${filtroStatus}`, 14, 32);
+                
                 const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
-                const tableRows = lotesFiltradosRelatorio.map(l => [l.dataCriacao, l.horaCriacao, l.codigo, l.baseSegmento, l.status, l.periodo]);
+                const tableRows = dados.map(l => [l.dataCriacao, l.horaCriacao, l.codigo, l.baseSegmento, l.status, l.periodo]);
+                
                 doc.autoTable({
                     head: [tableColumn], body: tableRows, startY: 36, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [79, 70, 229] },
                     didDrawPage: (data) => {
@@ -491,9 +507,9 @@
                         const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
                         const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
                         doc.setFontSize(8);
-                        const total = lotesFiltradosRelatorio.length;
-                        const impressos = lotesFiltradosRelatorio.filter(l => l.status === 'impressao').length;
-                        const pendentes = lotesFiltradosRelatorio.filter(l => l.status === 'pendente').length;
+                        const total = dados.length;
+                        const impressos = dados.filter(l => l.status === 'impressao').length;
+                        const pendentes = dados.filter(l => l.status === 'pendente').length;
                         doc.text(`Total: ${total} | Proc.: ${impressos} | Pend.: ${pendentes}`, 14, pageHeight - 10);
                         doc.text(`Pág. ${doc.internal.getNumberOfPages()}`, pageWidth - 20, pageHeight - 10);
                     }
@@ -689,6 +705,39 @@
                 }
             };
 
+            const excluirLotesEmMassaConsulta = () => {
+                if (lotesConsulta.length === 0) return showAlert("Nenhum lote para excluir.", "Atenção");
+                
+                showPrompt(`ATENÇÃO: Você está prestes a EXCLUIR PERMANENTEMENTE ${lotesConsulta.length} lotes listados abaixo.\n\nDigite a senha mestre para confirmar:`, async (pass) => {
+                    if (pass !== SENHA_MESTRA) return showAlert("Senha incorreta. Ação cancelada.", "Erro de Segurança");
+
+                    setIsLoadingData(true);
+                    try {
+                        // Firebase Batch suporta no máximo 500 operações.
+                        for (let i = 0; i < lotesConsulta.length; i += 500) {
+                            const batch = window.fb.writeBatch(window.db);
+                            const chunk = lotesConsulta.slice(i, i + 500);
+                            
+                            chunk.forEach(lote => {
+                                setDeletingIds(prev => new Set(prev).add(lote.id));
+                                batch.delete(window.fb.doc(window.db, "lotes", lote.id));
+                            });
+                            
+                            await batch.commit();
+                        }
+                        
+                        showAlert(`✅ Sucesso! ${lotesConsulta.length} lotes foram excluídos do sistema.`, "Exclusão em Massa Concluída");
+                        setConsultaMassaTexto(''); // Limpa o campo
+                        
+                    } catch (error) {
+                        console.error("Erro na exclusão em massa:", error);
+                        showAlert("Falha de rede durante a exclusão em massa. Alguns lotes podem não ter sido apagados.", "Erro");
+                    } finally {
+                        setIsLoadingData(false);
+                    }
+                }, "EXCLUSÃO EM MASSA");
+            };
+
             const toggleSelection = (id) => {
                 const next = new Set(selectedIds);
                 if (next.has(id)) next.delete(id); else next.add(id);
@@ -882,6 +931,7 @@
                             </div>
                         )}
 
+                        {/* ABA OPERAÇÃO */}
                         {activeTab === 'operacao' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -925,7 +975,7 @@
                                                 </form>
                                             ) : (
                                                 <div className="space-y-3 pt-2">
-                                                    <textarea ref={lotesMassaRef} className="w-full border-2 border-slate-200 rounded-xl p-4 font-mono text-xs h-32 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none resize-none" placeholder="Cole os códigos dos lotes (1 por linha)..."></textarea>
+                                                    <textarea ref={lotesMassaRef} className="w-full border-2 border-slate-200 rounded-xl p-4 font-mono text-xs h-32 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none resize-none custom-scrollbar" placeholder="Cole os códigos dos lotes (1 por linha)..."></textarea>
                                                     <button onClick={adicionarLotesMassa} disabled={novaBase && !isBaseValida(novaBase)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl disabled:bg-slate-300 transition-all shadow-md active:scale-95 uppercase tracking-wide">PROCESSAR TUDO EM MASSA</button>
                                                 </div>
                                             )}
@@ -940,7 +990,7 @@
                                                 <select value={periodoImpressao} onChange={e=>setPeriodoImpressao(e.target.value)} className="w-1/2 border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-indigo-300 outline-none"><option value="Todos">TODOS</option><option value="Manhã">MANHÃ</option><option value="Tarde">TARDE</option></select>
                                             </div>
                                             
-                                            <div className="flex-1 bg-white border-2 border-indigo-100 rounded-xl p-3 overflow-y-auto max-h-48 space-y-1 shadow-inner">
+                                            <div className="flex-1 bg-white border-2 border-indigo-100 rounded-xl p-3 overflow-y-auto max-h-48 space-y-1 shadow-inner custom-scrollbar">
                                                 <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-2 mb-2 sticky top-0 bg-white z-10 p-1">
                                                     <input type="checkbox" checked={basesSelecionadas.size === listaBases.length && listaBases.length > 0} onChange={toggleTodasBasesImpressao} className="w-4 h-4 cursor-pointer text-indigo-600 rounded"/>
                                                     <span className="text-[10px] font-black uppercase text-slate-700 tracking-wider">Selecionar Todas</span>
@@ -978,14 +1028,13 @@
                                     </div>
                                 </div>
 
-                                {}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 h-[600px] flex flex-col overflow-hidden">
                                         <div className="p-5 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
                                             <h3 className="font-black text-amber-900 uppercase text-xs flex gap-2 items-center tracking-widest"><Icons.Clock className="w-5 h-5 text-amber-600"/> Pendentes</h3>
                                             <span className="bg-amber-200/50 text-amber-900 px-3 py-1 rounded-full font-black text-[10px] shadow-sm">{pendentes.length}</span>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50 custom-scrollbar">
                                             {Object.keys(agrupadosPendentes).length === 0 ? (
                                                 <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhum lote pendente</div>
                                             ) : (
@@ -1027,7 +1076,7 @@
                                                 <select value={processadoBaseFiltro} onChange={e=>setProcessadoBaseFiltro(e.target.value)} className="text-xs font-bold border-2 border-indigo-50 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-300 text-slate-600 uppercase"><option value="">TODAS BASES</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/50 pb-28">
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/50 pb-28 custom-scrollbar">
                                             {processados.length === 0 && <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhum lote processado</div>}
                                             {processados.slice(0, 150).map(l=>(
                                                 <div key={l.id} className={`border-2 p-4 rounded-xl flex justify-between items-center transition-all ${selectedIds.has(l.id)?'bg-indigo-50 border-indigo-300 shadow-sm':'bg-white border-slate-100 hover:border-slate-300'}`}>
@@ -1066,6 +1115,7 @@
                             </div>
                         )}
 
+                        {/* ABA MONITORAMENTO */}
                         {activeTab === 'monitoramento' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
@@ -1113,7 +1163,7 @@
                             </div>
                         )}
 
-                        {}
+                        {/* ABA RELATÓRIOS */}
                         {activeTab === 'relatorio' && (
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -1122,13 +1172,13 @@
                                         Relatório Geral
                                     </h2>
                                     <div className="flex flex-wrap justify-center gap-3 no-print">
-                                        <button onClick={exportarCSV} className="bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-slate-800 transition-colors shadow-md">
+                                        <button onClick={() => exportarCSV(lotesFiltradosRelatorio)} className="bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-slate-800 transition-colors shadow-md">
                                             <Icons.FileText className="w-4 h-4"/> CSV
                                         </button>
-                                        <button onClick={exportarExcel} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-emerald-700 transition-colors shadow-md">
+                                        <button onClick={() => exportarExcel(lotesFiltradosRelatorio)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-emerald-700 transition-colors shadow-md">
                                             <Icons.List className="w-4 h-4"/> Excel
                                         </button>
-                                        <button onClick={exportarPDF} className="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-rose-700 transition-colors shadow-md">
+                                        <button onClick={() => exportarPDF(lotesFiltradosRelatorio)} className="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-rose-700 transition-colors shadow-md">
                                             <Icons.Download className="w-4 h-4"/> PDF
                                         </button>
                                         <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-black transition-colors shadow-md">
@@ -1191,57 +1241,136 @@
                             </div>
                         )}
 
-                        {}
+                        {/* ABA CONSULTA (COM OPÇÃO EM MASSA) */}
                         {activeTab === 'consulta' && (
-                            <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-300">
-                                <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden">
+                            <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-300">
+                                
+                                {/* Toggles Modos */}
+                                <div className="flex bg-slate-200/50 rounded-xl p-1 text-xs font-bold shadow-inner mx-auto w-max mb-6 border border-slate-200">
+                                    <button onClick={()=>setModoConsulta('simples')} className={`px-8 py-3 rounded-lg transition-all ${modoConsulta==='simples'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>CONSULTA ÚNICA</button>
+                                    <button onClick={()=>setModoConsulta('massa')} className={`px-8 py-3 rounded-lg transition-all ${modoConsulta==='massa'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>EM MASSA</button>
+                                </div>
+
+                                {/* Header de Busca */}
+                                <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
                                     <h2 className="text-2xl font-black mb-6 text-slate-800 flex gap-3 justify-center items-center uppercase tracking-tight">
-                                        <div className="bg-indigo-100 p-2.5 rounded-2xl"><Icons.Search className="text-indigo-600 w-6 h-6"/></div> Consultar Lote
+                                        <div className="bg-indigo-100 p-2.5 rounded-2xl"><Icons.Search className="text-indigo-600 w-6 h-6"/></div> 
+                                        {modoConsulta === 'simples' ? 'Consultar Lote' : 'Consulta em Massa'}
                                     </h2>
-                                    <input value={consultaTermo} onChange={e=>setConsultaTermo(e.target.value)} className="w-full p-5 border-4 border-slate-100 rounded-2xl text-center font-mono font-black text-2xl uppercase bg-slate-50 focus:border-indigo-400 focus:bg-white focus:outline-none transition-all shadow-inner placeholder:text-slate-300 tracking-widest" placeholder="BIPAR CÓDIGO AQUI..." autoFocus />
-                                </div>
-                                
-                                <div className="space-y-6">
-                                    {lotesConsulta.length > 50 && (
-                                        <div className="text-center text-amber-600 font-bold text-xs p-3 bg-amber-50 rounded-xl uppercase tracking-widest">
-                                            ⚠️ Muitos resultados ({lotesConsulta.length}). Exibindo 50 mais recentes.
+                                    
+                                    {modoConsulta === 'simples' ? (
+                                        <input value={consultaTermo} onChange={e=>setConsultaTermo(e.target.value)} className="w-full p-5 border-4 border-slate-100 rounded-2xl text-center font-mono font-black text-2xl uppercase bg-slate-50 focus:border-indigo-400 focus:bg-white focus:outline-none transition-all shadow-inner placeholder:text-slate-300 tracking-widest" placeholder="BIPAR CÓDIGO AQUI..." autoFocus />
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <textarea 
+                                                value={consultaMassaTexto} 
+                                                onChange={e=>setConsultaMassaTexto(e.target.value)} 
+                                                className="w-full p-5 border-4 border-slate-100 rounded-2xl font-mono text-sm uppercase bg-slate-50 focus:border-indigo-400 focus:bg-white focus:outline-none transition-all shadow-inner placeholder:text-slate-400 tracking-wider h-40 resize-none custom-scrollbar" 
+                                                placeholder="Cole vários códigos aqui (separados por linha ou vírgula)..." 
+                                                autoFocus 
+                                            />
+                                            <div className="text-xs text-slate-400 font-bold uppercase tracking-widest text-right">
+                                                Lotes identificados: <span className="text-indigo-600 font-black ml-1 text-sm bg-indigo-50 px-2 py-0.5 rounded">{lotesConsulta.length}</span>
+                                            </div>
                                         </div>
                                     )}
-                                    {lotesConsulta.slice(0, 50).map(l=>(
-                                        <div key={l.id} className="p-8 border-2 border-indigo-50 rounded-3xl bg-white shadow-lg hover:shadow-xl transition-shadow animate-in fade-in zoom-in-95 duration-300">
-                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-50 pb-6 mb-6 gap-4">
-                                                <div>
-                                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-2 bg-slate-100 px-2 py-1 rounded w-max">Código Lote</span>
-                                                    <div className="text-3xl sm:text-4xl font-black text-indigo-900 font-mono tracking-tighter uppercase">{l.codigo}</div>
+                                </div>
+                                
+                                {/* Resultados */}
+                                <div className="space-y-6">
+                                    {modoConsulta === 'simples' ? (
+                                        /* RESULTADOS MODO SIMPLES (CARDS) */
+                                        <>
+                                            {lotesConsulta.length > 50 && (
+                                                <div className="text-center text-amber-600 font-bold text-xs p-3 bg-amber-50 rounded-xl uppercase tracking-widest">
+                                                    ⚠️ Muitos resultados ({lotesConsulta.length}). Exibindo 50 mais recentes.
                                                 </div>
-                                                <div className={`px-5 py-2 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-md ${l.status==='pendente'?'bg-amber-500':'bg-emerald-500'}`}>{l.status}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 text-xs">
-                                                <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Segmento</span><div className="font-black text-slate-700 uppercase bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.baseSegmento}</div></div>
-                                                <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Data Inserção</span><div className="font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.dataCriacao} <span className="opacity-50">às</span> {l.horaCriacao}</div></div>
-                                                <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Turno</span><div className="font-black text-indigo-600 uppercase bg-indigo-50 p-2 rounded-lg border border-indigo-100 text-center">{l.periodo}</div></div>
-                                            </div>
-                                            <div className="mt-8 pt-6 border-t-2 border-slate-50">
-                                                <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4 flex items-center gap-2"><Icons.Activity className="w-4 h-4"/> Timeline do Lote</div>
-                                                <div className="space-y-3 pl-2 border-l-2 border-slate-200 ml-2">
-                                                    {(l.historico || []).map((h, i) => (
-                                                        <div key={i} className="flex flex-col sm:flex-row sm:gap-4 text-xs items-start sm:items-center relative">
-                                                            <div className="absolute w-2 h-2 bg-slate-300 rounded-full -left-[13px] top-1.5 sm:top-auto border-2 border-white"></div>
-                                                            <span className="text-slate-400 font-mono font-bold whitespace-nowrap mb-1 sm:mb-0 text-[10px]">{h.data}</span>
-                                                            <span className="font-black uppercase tracking-widest text-slate-700 px-2 py-0.5 bg-slate-100 rounded text-[10px]">{h.status}</span>
-                                                            <span className="text-slate-500 font-medium italic text-[11px] mt-1 sm:mt-0">{h.detalhe}</span>
+                                            )}
+                                            {lotesConsulta.slice(0, 50).map(l=>(
+                                                <div key={l.id} className="p-8 border-2 border-indigo-50 rounded-3xl bg-white shadow-lg hover:shadow-xl transition-shadow animate-in fade-in zoom-in-95 duration-300">
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-50 pb-6 mb-6 gap-4">
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-2 bg-slate-100 px-2 py-1 rounded w-max">Código Lote</span>
+                                                            <div className="text-3xl sm:text-4xl font-black text-indigo-900 font-mono tracking-tighter uppercase">{l.codigo}</div>
                                                         </div>
-                                                    ))}
+                                                        <div className={`px-5 py-2 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-md ${l.status==='pendente'?'bg-amber-500':'bg-emerald-500'}`}>{l.status}</div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 text-xs">
+                                                        <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Segmento</span><div className="font-black text-slate-700 uppercase bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.baseSegmento}</div></div>
+                                                        <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Data Inserção</span><div className="font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.dataCriacao} <span className="opacity-50">às</span> {l.horaCriacao}</div></div>
+                                                        <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Turno</span><div className="font-black text-indigo-600 uppercase bg-indigo-50 p-2 rounded-lg border border-indigo-100 text-center">{l.periodo}</div></div>
+                                                    </div>
+                                                    <div className="mt-8 pt-6 border-t-2 border-slate-50">
+                                                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4 flex items-center gap-2"><Icons.Activity className="w-4 h-4"/> Timeline do Lote</div>
+                                                        <div className="space-y-3 pl-2 border-l-2 border-slate-200 ml-2">
+                                                            {(l.historico || []).map((h, i) => (
+                                                                <div key={i} className="flex flex-col sm:flex-row sm:gap-4 text-xs items-start sm:items-center relative">
+                                                                    <div className="absolute w-2 h-2 bg-slate-300 rounded-full -left-[13px] top-1.5 sm:top-auto border-2 border-white"></div>
+                                                                    <span className="text-slate-400 font-mono font-bold whitespace-nowrap mb-1 sm:mb-0 text-[10px]">{h.data}</span>
+                                                                    <span className="font-black uppercase tracking-widest text-slate-700 px-2 py-0.5 bg-slate-100 rounded text-[10px]">{h.status}</span>
+                                                                    <span className="text-slate-500 font-medium italic text-[11px] mt-1 sm:mt-0">{h.detalhe}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        /* RESULTADOS MODO MASSA (TABELA + AÇÕES) */
+                                        lotesConsulta.length > 0 && (
+                                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in duration-300">
+                                                <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                                                    <h3 className="font-black text-slate-700 uppercase tracking-widest text-sm flex items-center gap-2">
+                                                        <Icons.List className="text-indigo-500 w-5 h-5"/> Resultados em Massa ({lotesConsulta.length})
+                                                    </h3>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button onClick={() => exportarCSV(lotesConsulta)} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition shadow"><Icons.FileText className="w-3 h-3"/> CSV</button>
+                                                        <button onClick={() => exportarExcel(lotesConsulta)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition shadow"><Icons.List className="w-3 h-3"/> EXCEL</button>
+                                                        <button onClick={() => exportarPDF(lotesConsulta)} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition shadow"><Icons.Download className="w-3 h-3"/> PDF</button>
+                                                        <div className="w-px h-6 bg-slate-300 mx-2 hidden md:block"></div>
+                                                        <button onClick={excluirLotesEmMassaConsulta} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition shadow-md"><Icons.Trash2 className="w-3 h-3"/> EXCLUIR TODOS OS {lotesConsulta.length}</button>
+                                                    </div>
+                                                </div>
+                                                <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
+                                                    <table className="w-full text-xs text-left">
+                                                        <thead className="bg-slate-100/50 border-b border-slate-200 font-black text-slate-500 uppercase tracking-widest sticky top-0 z-10 backdrop-blur-sm">
+                                                            <tr>
+                                                                <th className="p-4 whitespace-nowrap">Lote</th>
+                                                                <th className="p-4 whitespace-nowrap">Base</th>
+                                                                <th className="p-4 whitespace-nowrap">Data / Hora</th>
+                                                                <th className="p-4 whitespace-nowrap">Status</th>
+                                                                <th className="p-4 text-right whitespace-nowrap">Ação</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {lotesConsulta.map(l=>(
+                                                                <tr key={l.id} className="hover:bg-indigo-50/30 transition-colors">
+                                                                    <td className="p-4 font-black font-mono text-sm uppercase tracking-wider text-indigo-900 whitespace-nowrap">{l.codigo}</td>
+                                                                    <td className="p-4 font-bold uppercase text-slate-500 text-[10px] tracking-widest whitespace-nowrap">{l.baseSegmento}</td>
+                                                                    <td className="p-4 font-semibold text-slate-600 whitespace-nowrap">{l.dataCriacao} - {l.horaCriacao}</td>
+                                                                    <td className="p-4">
+                                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${l.status==='pendente'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700'}`}>
+                                                                            {l.status}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="p-4 text-right">
+                                                                        <button onClick={()=>removerLote(l.id)} className="text-rose-400 hover:text-white hover:bg-rose-500 p-2 rounded-lg bg-rose-50 transition-colors"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {}
+                        {/* ABA ADMIN */}
                         {activeTab === 'admin' && (
                             <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100">
@@ -1299,7 +1428,7 @@
                         )}
                     </main>
 
-                    {}
+                    {/* ÁREA DE IMPRESSÃO OCULTA */}
                     <div id="area-impressao-etiquetas" className="hidden">
                         {Object.entries(
                             lotesParaImprimir.reduce((acc, l) => {
