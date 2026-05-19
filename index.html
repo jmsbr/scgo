@@ -253,7 +253,6 @@
                 });
             };
 
-            // Estados da Aplicação
             const [activeTab, setActiveTab] = useState('operacao');
             const [listaBases, setListaBases] = useState(LISTA_PADRAO);
             const [basesExtras, setBasesExtras] = useState([]); 
@@ -297,8 +296,7 @@
 
             const [dataMonitoramento, setDataMonitoramento] = useState(getTodayISO());
             
-            /* NOVOS ESTADOS PARA CONSULTA E EXCLUSÃO EM MASSA */
-            const [modoConsulta, setModoConsulta] = useState('simples'); // 'simples' ou 'massa'
+            const [modoConsulta, setModoConsulta] = useState('simples');
             const [consultaTermo, setConsultaTermo] = useState('');
             const [consultaMassaTexto, setConsultaMassaTexto] = useState('');
 
@@ -372,6 +370,16 @@
                 return (now - timestamp) / 3600000 >= 10;
             }, [now]);
 
+            // NOVA FUNÇÃO: Imprimir Lotes Específicos (por grupo)
+            const imprimirLotesEspecificos = (lotesList) => {
+                if (lotesList.length === 0) return showAlert("Nenhum lote para imprimir.", "Atenção");
+                setLotesParaImprimir(lotesList);
+                setTimeout(() => {
+                    window.print();
+                    setTimeout(() => setLotesParaImprimir([]), 2000);
+                }, 500);
+            };
+
             const imprimirSelecionados = () => {
                 if (selectedIds.size === 0) return showAlert("Selecione pelo menos um lote.", "Atenção");
                 const selecionados = lotes.filter(l => selectedIds.has(l.id));
@@ -382,9 +390,51 @@
                 }, 500);
             };
 
-            const mudarStatusEmMassa = async (itens, novoStatus) => {
+            const iniciarUsoEmMassa = async (itens) => {
                 if (!dbConnected) return;
-                showConfirm(`Confirma mover TODOS os ${itens.length} itens deste segmento para Processados?`, async () => {
+                showConfirm(`Confirma INICIAR O USO de TODOS os ${itens.length} itens deste segmento?\nIsto irá gerar o PDF de Etiquetas e mover para 'Sendo Utilizados'.`, async () => {
+                    const batch = window.fb.writeBatch(window.db);
+                    const dataAtual = new Date();
+                    const dataHora = dataAtual.toLocaleString('pt-BR');
+                    const dataProc = dataAtual.toLocaleDateString('pt-BR');
+                    const horaProc = dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    const idGrupo = dataAtual.getTime();
+                    const nomeGrupo = `${dataProc} às ${horaProc}`;
+
+                    itens.forEach(item => {
+                        const docRef = window.fb.doc(window.db, "lotes", item.id);
+                        const novoHistorico = [
+                            ...(item.historico || []),
+                            { status: 'EM USO', data: dataHora, detalhe: 'Início de uso/separação' }
+                        ];
+                        batch.update(docRef, { 
+                            status: 'em_uso', 
+                            historico: novoHistorico,
+                            idGrupoProcessamento: idGrupo,
+                            dataProcessamento: dataProc,
+                            horaProcessamento: horaProc,
+                            grupoNomeFormatado: nomeGrupo
+                        });
+                    });
+
+                    try {
+                        await batch.commit();
+                        showAlert(`Lotes enviados para SENDO UTILIZADOS.\nA impressão das etiquetas será iniciada.`, "Sucesso");
+                        setLotesParaImprimir(itens);
+                        setTimeout(() => {
+                            window.print();
+                            setTimeout(() => setLotesParaImprimir([]), 2000);
+                        }, 500);
+                    } catch (error) {
+                        console.error("Erro em massa:", error);
+                        showAlert("Erro ao atualizar em massa.", "Erro");
+                    }
+                });
+            };
+
+            const finalizarProcessamentoEmMassa = async (itens, nomeGrupo) => {
+                if (!dbConnected) return;
+                showConfirm(`Confirma FINALIZAR o grupo "${nomeGrupo}"?\nEle irá para a caixa de Processados.`, async () => {
                     const batch = window.fb.writeBatch(window.db);
                     const dataHora = new Date().toLocaleString('pt-BR');
 
@@ -392,16 +442,17 @@
                         const docRef = window.fb.doc(window.db, "lotes", item.id);
                         const novoHistorico = [
                             ...(item.historico || []),
-                            { status: novoStatus.toUpperCase(), data: dataHora, detalhe: 'Ação em massa por segmento' }
+                            { status: 'PROCESSADO', data: dataHora, detalhe: 'Expedição finalizada' }
                         ];
-                        batch.update(docRef, { status: novoStatus, historico: novoHistorico });
+                        batch.update(docRef, { status: 'impressao', historico: novoHistorico });
                     });
 
                     try {
                         await batch.commit();
+                        showAlert(`Grupo enviado para PROCESSADOS com sucesso!`, "Sucesso");
                     } catch (error) {
                         console.error("Erro em massa:", error);
-                        showAlert("Erro ao atualizar em massa.", "Erro");
+                        showAlert("Erro ao finalizar grupo.", "Erro");
                     }
                 });
             };
@@ -448,7 +499,6 @@
                     .sort((a, b) => b.count - a.count);
             }, [lotes, dataMonitoramento, listaBases, deletingIds]);
 
-            /* LOGICA ATUALIZADA: MÚLTIPLAS CONSULTAS */
             const lotesConsulta = useMemo(() => {
                 if (modoConsulta === 'simples') {
                     if (!consultaTermo) return [];
@@ -456,13 +506,11 @@
                     return lotes.filter(l => !deletingIds.has(l.id) && l.codigo.includes(term));
                 } else {
                     if (!consultaMassaTexto.trim()) return [];
-                    // Permite separar por nova linha ou vírgula
                     const terms = consultaMassaTexto.toUpperCase().split(/[\r\n,]+/).map(t => t.trim()).filter(Boolean);
                     return lotes.filter(l => !deletingIds.has(l.id) && terms.includes(l.codigo));
                 }
             }, [lotes, consultaTermo, consultaMassaTexto, modoConsulta, deletingIds]);
 
-            // Export functions now accept an optional "dados" parameter to allow exporting mass search results
             const exportarCSV = (dados = lotesFiltradosRelatorio) => {
                 if (dados.length === 0) return showAlert("Nada para exportar", "Atenção");
                 const cabecalho = "Data;Lote;Base;Status;Periodo;Hora";
@@ -490,12 +538,13 @@
                 XLSX.writeFile(workbook, `relatorio_lotes_${getTodayISO()}.xlsx`);
             };
 
-            const exportarPDF = (dados = lotesFiltradosRelatorio) => {
+            // MODIFICADO: Adicionado sufixo de arquivo para salvar PDFs por Grupo específico
+            const exportarPDF = (dados = lotesFiltradosRelatorio, fileSuffix = '') => {
                 if (dados.length === 0) return showAlert("Nada para exportar", "Atenção");
                 if (!window.jspdf) return showAlert("Biblioteca PDF não carregou.", "Erro");
                 const doc = new window.jspdf.jsPDF();
-                doc.setFontSize(16); doc.text("Relatório de Sistema de Lotes", 14, 20);
-                doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 26);
+                doc.setFontSize(16); doc.text("Relatório Final de Sistema de Lotes para Expedição", 14, 20);
+                doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()} ${fileSuffix ? `| Ref: ${fileSuffix.replace(/_/g, ' ')}` : ''}`, 14, 26);
                 
                 const tableColumn = ["Data", "Hora", "Lote", "Base", "Status", "Período"];
                 const tableRows = dados.map(l => [l.dataCriacao, l.horaCriacao, l.codigo, l.baseSegmento, l.status, l.periodo]);
@@ -510,11 +559,13 @@
                         const total = dados.length;
                         const impressos = dados.filter(l => l.status === 'impressao').length;
                         const pendentes = dados.filter(l => l.status === 'pendente').length;
-                        doc.text(`Total: ${total} | Proc.: ${impressos} | Pend.: ${pendentes}`, 14, pageHeight - 10);
+                        doc.text(`Total Lotes: ${total} | Processados: ${impressos} | Pendentes: ${pendentes}`, 14, pageHeight - 10);
                         doc.text(`Pág. ${doc.internal.getNumberOfPages()}`, pageWidth - 20, pageHeight - 10);
                     }
                 });
-                doc.save(`relatorio_lotes_${getTodayISO()}.pdf`);
+                
+                const fileName = fileSuffix ? `relatorio_expedicao_${fileSuffix}.pdf` : `relatorio_lotes_${getTodayISO()}.pdf`;
+                doc.save(fileName);
             };
 
             useEffect(() => {
@@ -668,9 +719,30 @@
             const mudarStatus = async (id, status) => {
                 const lote = lotes.find(l => l.id === id);
                 if (!lote) return;
-                const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: new Date().toLocaleString('pt-BR'), detalhe: 'Alteração' }];
+                const dataAtual = new Date();
+                const dataHora = dataAtual.toLocaleString('pt-BR');
+                const hist = [...(lote.historico || []), { status: status.toUpperCase(), data: dataHora, detalhe: 'Alteração Individual' }];
                 
-                await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), { status, historico: hist });
+                let updates = { status, historico: hist };
+                
+                if (status === 'em_uso') {
+                    const dataProc = dataAtual.toLocaleDateString('pt-BR');
+                    const horaProc = dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    updates.idGrupoProcessamento = dataAtual.getTime();
+                    updates.dataProcessamento = dataProc;
+                    updates.horaProcessamento = horaProc;
+                    updates.grupoNomeFormatado = `${dataProc} às ${horaProc} (Indiv.)`;
+                }
+
+                await window.fb.updateDoc(window.fb.doc(window.db, "lotes", id), updates);
+                
+                if (status === 'em_uso') {
+                    setLotesParaImprimir([{ ...lote, ...updates }]);
+                    setTimeout(() => {
+                        window.print();
+                        setTimeout(() => setLotesParaImprimir([]), 2000);
+                    }, 500);
+                }
             };
 
             const removerLote = async (id) => {
@@ -713,7 +785,6 @@
 
                     setIsLoadingData(true);
                     try {
-                        // Firebase Batch suporta no máximo 500 operações.
                         for (let i = 0; i < lotesConsulta.length; i += 500) {
                             const batch = window.fb.writeBatch(window.db);
                             const chunk = lotesConsulta.slice(i, i + 500);
@@ -727,7 +798,7 @@
                         }
                         
                         showAlert(`✅ Sucesso! ${lotesConsulta.length} lotes foram excluídos do sistema.`, "Exclusão em Massa Concluída");
-                        setConsultaMassaTexto(''); // Limpa o campo
+                        setConsultaMassaTexto(''); 
                         
                     } catch (error) {
                         console.error("Erro na exclusão em massa:", error);
@@ -796,9 +867,22 @@
                 const executarImpressao = async () => {
                     if (pendentesArr.length > 0) {
                         const batch = window.fb.writeBatch(window.db);
+                        const dataAtual = new Date();
+                        const dataProc = dataAtual.toLocaleDateString('pt-BR');
+                        const horaProc = dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        const idGrupo = dataAtual.getTime();
+                        const nomeGrupo = `${dataProc} às ${horaProc} (Massa Diária)`;
+
                         pendentesArr.forEach(p => {
-                            const h = [...(p.historico || []), { status: 'IMPRESSAO', data: new Date().toLocaleString('pt-BR'), detalhe: `Em Massa` }];
-                            batch.update(window.fb.doc(window.db, "lotes", p.id), { status: 'impressao', historico: h });
+                            const h = [...(p.historico || []), { status: 'EM USO', data: dataAtual.toLocaleString('pt-BR'), detalhe: `Em Massa Diária` }];
+                            batch.update(window.fb.doc(window.db, "lotes", p.id), { 
+                                status: 'em_uso', 
+                                historico: h,
+                                idGrupoProcessamento: idGrupo,
+                                dataProcessamento: dataProc,
+                                horaProcessamento: horaProc,
+                                grupoNomeFormatado: nomeGrupo 
+                            });
                         });
                         await batch.commit();
                     }
@@ -810,7 +894,7 @@
                 };
 
                 if (pendentesArr.length > 0) {
-                    showConfirm(`Serão processados ${pendentesArr.length} itens. Confirma a impressão?`, executarImpressao);
+                    showConfirm(`Serão iniciados e geradas etiquetas para ${pendentesArr.length} itens. Confirma?`, executarImpressao);
                 } else {
                     executarImpressao();
                 }
@@ -849,6 +933,38 @@
                 );
             }, [lotes, processadosDataFiltro, processadoBaseFiltro, processadoBusca, deletingIds]);
 
+            const emUso = useMemo(() => lotes.filter(l => !deletingIds.has(l.id) && l.status === 'em_uso'), [lotes, deletingIds]);
+            
+            const agrupadosEmUso = useMemo(() => {
+                const grupos = {};
+                emUso.forEach(l => {
+                    const key = l.grupoNomeFormatado || 'Lotes Avulsos';
+                    if (!grupos[key]) grupos[key] = { lotes: [], base: l.baseSegmento };
+                    grupos[key].lotes.push(l);
+                });
+                const sortedKeys = Object.keys(grupos).sort((a, b) => {
+                    const aTime = grupos[a].lotes[0].idGrupoProcessamento || 0;
+                    const bTime = grupos[b].lotes[0].idGrupoProcessamento || 0;
+                    return bTime - aTime;
+                });
+                return sortedKeys.map(key => ({ nome: key, lotes: grupos[key].lotes, base: grupos[key].base }));
+            }, [emUso]);
+
+            const agrupadosProcessados = useMemo(() => {
+                const grupos = {};
+                processados.forEach(l => {
+                    const key = l.grupoNomeFormatado || 'Lotes Antigos';
+                    if (!grupos[key]) grupos[key] = { lotes: [], base: l.baseSegmento };
+                    grupos[key].lotes.push(l);
+                });
+                const sortedKeys = Object.keys(grupos).sort((a, b) => {
+                    const aTime = grupos[a].lotes[0].idGrupoProcessamento || 0;
+                    const bTime = grupos[b].lotes[0].idGrupoProcessamento || 0;
+                    return bTime - aTime;
+                });
+                return sortedKeys.map(key => ({ nome: key, lotes: grupos[key].lotes, base: grupos[key].base }));
+            }, [processados]);
+
             const alertas = useMemo(() => pendentes.filter(l => verificarAlerta10Horas(l.timestampCriacao)), [pendentes, verificarAlerta10Horas]);
 
             const tabConfig = {
@@ -865,7 +981,7 @@
                     {/* Renderização do Sistema de Diálogo (Alertas Personalizados) */}
                     <CustomDialog dialog={dialog} closeDialog={closeDialog} />
 
-                    {/* NOVO BALÃO / MODAL DE AVISO OBRIGATÓRIO JMS */}
+                    {/* BALÃO / MODAL DE AVISO OBRIGATÓRIO JMS */}
                     {showJMSWarning && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md no-print">
                             <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center animate-in zoom-in-95 duration-300">
@@ -931,13 +1047,13 @@
                             </div>
                         )}
 
-                        {/* ABA OPERAÇÃO */}
+                        {}
                         {activeTab === 'operacao' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-100">
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                            <h2 className="text-xl font-black text-slate-800 flex gap-2 tracking-tight uppercase"><Icons.Plus className="text-emerald-500 w-6 h-6"/> Registrar Entrada</h2>
+                                            <h2 className="text-xl font-black text-slate-800 flex gap-2 tracking-tight uppercase"><Icons.Plus className="text-emerald-500 w-6 h-6"/> Registrar Pendentes</h2>
                                             <div className="flex bg-slate-100 rounded-xl p-1 text-xs font-bold shadow-inner">
                                                 <button onClick={()=>setModoEntrada('scanner')} className={`px-4 py-2 rounded-lg transition-all ${modoEntrada==='scanner'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>SCANNER</button>
                                                 <button onClick={()=>setModoEntrada('massa')} className={`px-4 py-2 rounded-lg transition-all ${modoEntrada==='massa'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-700'}`}>EM MASSA</button>
@@ -976,13 +1092,13 @@
                                             ) : (
                                                 <div className="space-y-3 pt-2">
                                                     <textarea ref={lotesMassaRef} className="w-full border-2 border-slate-200 rounded-xl p-4 font-mono text-xs h-32 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none resize-none custom-scrollbar" placeholder="Cole os códigos dos lotes (1 por linha)..."></textarea>
-                                                    <button onClick={adicionarLotesMassa} disabled={novaBase && !isBaseValida(novaBase)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl disabled:bg-slate-300 transition-all shadow-md active:scale-95 uppercase tracking-wide">PROCESSAR TUDO EM MASSA</button>
+                                                    <button onClick={adicionarLotesMassa} disabled={novaBase && !isBaseValida(novaBase)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl disabled:bg-slate-300 transition-all shadow-md active:scale-95 uppercase tracking-wide">LANÇAR TODOS PENDENTES</button>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                     <div className="bg-indigo-50 p-6 md:p-8 rounded-2xl border border-indigo-100 shadow-xl flex flex-col">
-                                        <h2 className="font-black text-indigo-900 mb-5 uppercase text-xs tracking-widest flex gap-2 items-center"><Icons.Printer className="w-5 h-5 text-indigo-600"/> Impressão Diária</h2>
+                                        <h2 className="font-black text-indigo-900 mb-5 uppercase text-xs tracking-widest flex gap-2 items-center"><Icons.Printer className="w-5 h-5 text-indigo-600"/> Impressão Diária Rápida</h2>
                                         
                                         <div className="space-y-4 flex-1 flex flex-col">
                                             <div className="flex gap-2">
@@ -1028,7 +1144,7 @@
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 h-[600px] flex flex-col overflow-hidden">
                                         <div className="p-5 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
                                             <h3 className="font-black text-amber-900 uppercase text-xs flex gap-2 items-center tracking-widest"><Icons.Clock className="w-5 h-5 text-amber-600"/> Pendentes</h3>
@@ -1042,7 +1158,7 @@
                                                     <div key={base} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                                                         <div className="bg-slate-100/80 p-3 text-[10px] font-black flex justify-between items-center uppercase tracking-wider">
                                                             <span className="text-slate-700">{base} <span className="bg-slate-200 px-1.5 rounded text-slate-600 ml-1">{list.length}</span></span> 
-                                                            <button onClick={()=>mudarStatusEmMassa(list,'impressao')} className="text-emerald-700 bg-emerald-100/50 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition-colors">PROCESSAR GRUPO</button>
+                                                            <button onClick={()=>iniciarUsoEmMassa(list)} className="text-blue-700 bg-blue-100/50 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition-colors shadow-sm">INICIAR USO / IMPRIMIR</button>
                                                         </div>
                                                         <div className="divide-y divide-slate-100">
                                                             {list.slice(0, 100).map(l=>(
@@ -1050,7 +1166,48 @@
                                                                     <div className="font-mono font-black text-sm uppercase text-slate-800 tracking-wider">{l.codigo}</div>
                                                                     <div className="flex gap-2">
                                                                         <button onClick={()=>removerLote(l.id)} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-4 h-4"/></button>
-                                                                        <button onClick={()=>mudarStatus(l.id,'impressao')} className="text-[10px] border-2 border-slate-200 px-3 py-1.5 rounded-lg font-black bg-white hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 shadow-sm uppercase transition-all tracking-wider">Usar</button>
+                                                                        <button onClick={()=>mudarStatus(l.id,'em_uso')} className="text-[10px] border-2 border-slate-200 px-3 py-1.5 rounded-lg font-black bg-white hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 shadow-sm uppercase transition-all tracking-wider">Iniciar</button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 h-[600px] flex flex-col overflow-hidden">
+                                        <div className="p-5 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                            <h3 className="font-black text-blue-900 uppercase text-xs flex gap-2 items-center tracking-widest"><Icons.Activity className="w-5 h-5 text-blue-600"/> Sendo Utilizados</h3>
+                                            <span className="bg-blue-200/50 text-blue-900 px-3 py-1 rounded-full font-black text-[10px] shadow-sm">{emUso.length}</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50 custom-scrollbar">
+                                            {agrupadosEmUso.length === 0 ? (
+                                                <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhuma caixa em uso</div>
+                                            ) : (
+                                                agrupadosEmUso.map(grupo => (
+                                                    <div key={grupo.nome} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow mb-4">
+                                                        <div className="bg-blue-100/80 p-3 text-[10px] font-black flex flex-col gap-2 justify-between items-start uppercase tracking-wider border-b border-blue-200">
+                                                            <div className="flex justify-between w-full items-center">
+                                                                <span className="text-blue-900 flex items-center gap-1"><Icons.Clock className="w-3 h-3"/> {grupo.nome} <span className="bg-blue-200 px-1.5 rounded text-blue-800 ml-1">{grupo.lotes.length}</span></span>
+                                                            </div>
+                                                            <div className="flex gap-2 w-full mt-1">
+                                                                <button onClick={() => { setLotesParaImprimir(grupo.lotes); setTimeout(() => { window.print(); setTimeout(() => setLotesParaImprimir([]), 2000); }, 500); }} className="flex-1 text-blue-700 bg-white hover:bg-blue-50 py-1.5 rounded-lg transition-colors font-black border border-blue-200 shadow-sm flex items-center justify-center gap-1">
+                                                                    <Icons.Printer className="w-3 h-3"/> Etiquetas
+                                                                </button>
+                                                                <button onClick={()=>finalizarProcessamentoEmMassa(grupo.lotes, grupo.nome)} className="flex-1 text-emerald-700 bg-emerald-100 hover:bg-emerald-200 py-1.5 rounded-lg transition-colors font-black border border-emerald-300 shadow-sm flex items-center justify-center gap-1">
+                                                                    <Icons.CheckSquare className="w-3 h-3"/> Finalizar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="divide-y divide-slate-100 p-1">
+                                                            {grupo.lotes.slice(0, 100).map(l=>(
+                                                                <div key={l.id} className="p-3 flex justify-between items-center transition-colors hover:bg-slate-50">
+                                                                    <div className="font-mono font-black text-xs uppercase text-slate-800 tracking-wider pl-2">{l.codigo}</div>
+                                                                    <div className="flex gap-1 pr-2">
+                                                                        <button onClick={()=>removerLote(l.id)} className="text-rose-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                                        <button onClick={()=>mudarStatus(l.id,'impressao')} className="text-[9px] border border-slate-200 px-2 py-1 rounded font-black bg-white hover:bg-emerald-50 hover:text-emerald-700 transition-all uppercase">Fin.</button>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -1076,20 +1233,43 @@
                                                 <select value={processadoBaseFiltro} onChange={e=>setProcessadoBaseFiltro(e.target.value)} className="text-xs font-bold border-2 border-indigo-50 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-300 text-slate-600 uppercase"><option value="">TODAS BASES</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/50 pb-28 custom-scrollbar">
-                                            {processados.length === 0 && <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhum lote processado</div>}
-                                            {processados.slice(0, 150).map(l=>(
-                                                <div key={l.id} className={`border-2 p-4 rounded-xl flex justify-between items-center transition-all ${selectedIds.has(l.id)?'bg-indigo-50 border-indigo-300 shadow-sm':'bg-white border-slate-100 hover:border-slate-300'}`}>
-                                                    <div className="flex gap-4 items-center">
-                                                        <input type="checkbox" checked={selectedIds.has(l.id)} onChange={()=>toggleSelection(l.id)} className="w-5 h-5 cursor-pointer text-indigo-600 rounded"/>
-                                                        <div>
-                                                            <div className="font-mono font-black text-lg uppercase text-slate-800 tracking-wider leading-none mb-1">{l.codigo}</div>
-                                                            <div className="text-[9px] text-indigo-500 font-black uppercase tracking-widest">{l.baseSegmento}</div>
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50 pb-28 custom-scrollbar">
+                                            {agrupadosProcessados.length === 0 ? (
+                                                <div className="text-center text-slate-400 font-bold text-xs p-10 uppercase tracking-widest">Nenhuma caixa processada</div>
+                                            ) : (
+                                                agrupadosProcessados.map(grupo => (
+                                                    <div key={grupo.nome} className="mb-4 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                        <div className="bg-indigo-50/80 p-3 flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-indigo-100 gap-3">
+                                                            <div>
+                                                                <span className="font-black text-indigo-900 text-[10px] uppercase flex items-center gap-2 tracking-widest">
+                                                                    <Icons.Clock className="w-4 h-4 text-indigo-500" />
+                                                                    {grupo.nome}
+                                                                    <span className="bg-indigo-200/50 text-indigo-800 px-2 py-0.5 rounded text-[10px] ml-1">{grupo.lotes.length} itens</span>
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex gap-2 w-full xl:w-auto mt-2 xl:mt-0">
+                                                                <button onClick={() => exportarPDF(grupo.lotes)} className="flex-1 xl:flex-none bg-rose-600 text-white hover:bg-rose-700 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center justify-center gap-1 transition-colors">
+                                                                    <Icons.FileText className="w-3 h-3" /> Relatório PDF
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="divide-y divide-slate-100 p-2">
+                                                            {grupo.lotes.slice(0, 150).map(l => (
+                                                                <div key={l.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors rounded-lg">
+                                                                    <div className="flex gap-3 items-center">
+                                                                        <input type="checkbox" checked={selectedIds.has(l.id)} onChange={()=>toggleSelection(l.id)} className="w-4 h-4 cursor-pointer text-indigo-600 rounded"/>
+                                                                        <div>
+                                                                            <div className="font-mono font-black text-xs uppercase text-slate-800 tracking-wider leading-none mb-1">{l.codigo}</div>
+                                                                            <div className="text-[9px] text-slate-400 font-bold uppercase">{l.baseSegmento}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button onClick={()=>removerLote(l.id)} className="text-rose-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-4 h-4"/></button>
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
-                                                    <button onClick={()=>removerLote(l.id)} className="text-rose-300 hover:text-rose-500 p-2 rounded-lg hover:bg-rose-50 transition-colors"><Icons.Trash2 className="w-5 h-5"/></button>
-                                                </div>
-                                            ))}
+                                                ))
+                                            )}
                                         </div>
                                         
                                         {selectedIds.size > 0 && (
@@ -1105,9 +1285,6 @@
                                                     </select>
                                                     <button onClick={alterarBaseSelecionados} className="bg-indigo-500 hover:bg-indigo-600 text-white font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow-md transition-colors">Mudar Base</button>
                                                 </div>
-                                                <button onClick={imprimirSelecionados} className="w-full bg-slate-800 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 hover:bg-slate-900 transition-colors">
-                                                    <Icons.Printer className="w-4 h-4"/> Imprimir Seleção ({selectedIds.size})
-                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -1115,7 +1292,7 @@
                             </div>
                         )}
 
-                        {/* ABA MONITORAMENTO */}
+                        {}
                         {activeTab === 'monitoramento' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
@@ -1163,7 +1340,7 @@
                             </div>
                         )}
 
-                        {/* ABA RELATÓRIOS */}
+                        {}
                         {activeTab === 'relatorio' && (
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -1182,7 +1359,7 @@
                                             <Icons.Download className="w-4 h-4"/> PDF
                                         </button>
                                         <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex gap-2 items-center hover:bg-black transition-colors shadow-md">
-                                            <Icons.Printer className="w-4 h-4"/> Imprimir
+                                            <Icons.Printer className="w-4 h-4"/> Imprimir Lista
                                         </button>
                                     </div>
                                 </div>
@@ -1192,7 +1369,7 @@
                                         <select value={filtroBase} onChange={e=>setFiltroBase(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 uppercase focus:outline-none focus:border-indigo-400"><option value="">TODAS BASES</option>{listaBases.map(b=><option key={b} value={b}>{b}</option>)}</select>
                                         <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-400" />
                                         <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-400" />
-                                        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 uppercase focus:outline-none focus:border-indigo-400"><option value="todos">TODOS STATUS</option><option value="pendente">PENDENTE</option><option value="impressao">PROCESSADO</option></select>
+                                        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="border-2 border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-700 uppercase focus:outline-none focus:border-indigo-400"><option value="todos">TODOS STATUS</option><option value="pendente">PENDENTE</option><option value="em_uso">EM USO</option><option value="impressao">PROCESSADO</option></select>
                                     </div>
                                     <div className="flex flex-wrap gap-4 items-center pt-2 border-t border-slate-100">
                                         <div className="bg-slate-100 px-4 py-2 rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest shadow-inner">Total Banco <span className="text-slate-800 ml-2 text-sm">{lotes.length}</span></div>
@@ -1225,7 +1402,7 @@
                                                     <td className="p-4 font-black font-mono text-sm uppercase tracking-wider text-slate-800 whitespace-nowrap">{l.codigo}</td>
                                                     <td className="p-4 font-bold uppercase text-slate-500 text-[10px] tracking-widest whitespace-nowrap">{l.baseSegmento}</td>
                                                     <td className="p-4">
-                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${l.status==='pendente'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700'}`}>
+                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${l.status==='pendente'?'bg-amber-100 text-amber-700':l.status==='em_uso'?'bg-blue-100 text-blue-700':'bg-emerald-100 text-emerald-700'}`}>
                                                             {l.status}
                                                         </span>
                                                     </td>
@@ -1241,7 +1418,7 @@
                             </div>
                         )}
 
-                        {/* ABA CONSULTA (COM OPÇÃO EM MASSA) */}
+                        {}
                         {activeTab === 'consulta' && (
                             <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-300">
                                 
@@ -1277,10 +1454,9 @@
                                     )}
                                 </div>
                                 
-                                {/* Resultados */}
+                                {/* Resultados Consulta */}
                                 <div className="space-y-6">
                                     {modoConsulta === 'simples' ? (
-                                        /* RESULTADOS MODO SIMPLES (CARDS) */
                                         <>
                                             {lotesConsulta.length > 50 && (
                                                 <div className="text-center text-amber-600 font-bold text-xs p-3 bg-amber-50 rounded-xl uppercase tracking-widest">
@@ -1294,7 +1470,7 @@
                                                             <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-2 bg-slate-100 px-2 py-1 rounded w-max">Código Lote</span>
                                                             <div className="text-3xl sm:text-4xl font-black text-indigo-900 font-mono tracking-tighter uppercase">{l.codigo}</div>
                                                         </div>
-                                                        <div className={`px-5 py-2 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-md ${l.status==='pendente'?'bg-amber-500':'bg-emerald-500'}`}>{l.status}</div>
+                                                        <div className={`px-5 py-2 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-md ${l.status==='pendente'?'bg-amber-500':l.status==='em_uso'?'bg-blue-500':'bg-emerald-500'}`}>{l.status}</div>
                                                     </div>
                                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 text-xs">
                                                         <div><span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block mb-1.5">Segmento</span><div className="font-black text-slate-700 uppercase bg-slate-50 p-2 rounded-lg border border-slate-100 text-center">{l.baseSegmento}</div></div>
@@ -1318,7 +1494,6 @@
                                             ))}
                                         </>
                                     ) : (
-                                        /* RESULTADOS MODO MASSA (TABELA + AÇÕES) */
                                         lotesConsulta.length > 0 && (
                                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in duration-300">
                                                 <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -1351,7 +1526,7 @@
                                                                     <td className="p-4 font-bold uppercase text-slate-500 text-[10px] tracking-widest whitespace-nowrap">{l.baseSegmento}</td>
                                                                     <td className="p-4 font-semibold text-slate-600 whitespace-nowrap">{l.dataCriacao} - {l.horaCriacao}</td>
                                                                     <td className="p-4">
-                                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${l.status==='pendente'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700'}`}>
+                                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${l.status==='pendente'?'bg-amber-100 text-amber-700':l.status==='em_uso'?'bg-blue-100 text-blue-700':'bg-emerald-100 text-emerald-700'}`}>
                                                                             {l.status}
                                                                         </span>
                                                                     </td>
@@ -1370,7 +1545,7 @@
                             </div>
                         )}
 
-                        {/* ABA ADMIN */}
+                        {}
                         {activeTab === 'admin' && (
                             <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-300">
                                 <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100">
@@ -1428,6 +1603,7 @@
                         )}
                     </main>
 
+                    {}
                     {/* ÁREA DE IMPRESSÃO OCULTA */}
                     <div id="area-impressao-etiquetas" className="hidden">
                         {Object.entries(
