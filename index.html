@@ -52,13 +52,41 @@
     <style>
         @media print {
             @page { size: A4 landscape; margin: 5mm; }
-            body, html { background-color: white !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+            body, html { background-color: white !important; height: auto !important; min-height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; position: static !important; }
             .no-print { display: none !important; }
-            #root > div { min-height: 0 !important; background: none !important; }
-            #area-impressao-etiquetas { display: block !important; visibility: visible !important; position: relative !important; width: 100% !important; padding: 0; margin: 0; }
-            .print-group { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; break-after: page; page-break-after: always; }
+            #root, #root > div { min-height: 0 !important; height: auto !important; background: none !important; display: block !important; position: static !important; overflow: visible !important; }
+            #area-impressao-etiquetas { display: block !important; visibility: visible !important; position: static !important; width: 100% !important; padding: 0; margin: 0; overflow: visible !important; }
+            
+            /* CORREÇÃO DE IMPRESSÃO: Removemos o CSS Grid e usamos block/float para garantir que o Chrome faça paginação perfeita independente do número de etiquetas */
+            .print-group { 
+                display: block; 
+                width: 100%; 
+                break-after: page; 
+                page-break-after: always; 
+            }
+            .print-group::after { 
+                content: ""; 
+                display: table; 
+                clear: both; 
+            }
             .print-group:last-child { break-after: auto; page-break-after: auto; }
-            .label-card { border: 1px solid #000; height: 90mm; display: flex; flex-direction: column; justify-content: space-between; padding: 2px; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; background: white; }
+            
+            .label-card { 
+                float: left; /* Flutuação garante que as etiquetas quebrem de página corretamente sem truncar no navegador */
+                width: calc(20% - 2mm); 
+                margin-right: 2mm; 
+                margin-bottom: 2mm;
+                border: 1px solid #000; 
+                height: 90mm; 
+                display: flex; 
+                flex-direction: column; 
+                justify-content: space-between; 
+                padding: 2px; 
+                box-sizing: border-box; 
+                break-inside: avoid; 
+                page-break-inside: avoid; 
+                background: white; 
+            }
             .label-header { border-bottom: 2px solid #000; display: flex; justify-content: space-around; padding-bottom: 2px; margin-bottom: 2px; }
             .header-title { font-size: 8px; font-weight: 700; color: #555; text-transform: uppercase; }
             .header-value { font-size: 14px; font-weight: 900; color: #000; line-height: 1; text-transform: uppercase; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
